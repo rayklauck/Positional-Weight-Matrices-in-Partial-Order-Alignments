@@ -17,6 +17,10 @@ def chance(p):
 def clip(value, min_, max_):
     return min(max_, max(min_, value))
 
+def string_similarity(s1, s2):
+    assert len(s1) == len(s2)
+    return sum([1 for i in range(len(s1)) if s1[i] == s2[i]]) / len(s1)
+
 
 
 alphabet = ["A","T","C","G"]
@@ -129,24 +133,59 @@ def piece_similarity(piece1, piece2):
 def invers_sqrt_length_correction(value, length):
     return value / (length**0.5)
 
-def best_alignment_similarity(read1, read2, min_considered_overlap=2, length_correction=invers_sqrt_length_correction):
-    """Try to align reads and find best similarity score."""
+def best_alignment_similarity(read1, read2,
+                               return_all_results=False,
+                                 min_considered_overlap=2, 
+                                 length_correction=invers_sqrt_length_correction)->tuple[float, int] | list[tuple[float, int]]:
+    """Try to align reads and find best similarity score.
+    
+    Offset defined as:
+    the number of bases the second read starts after the first read (may be negative to indicate it starts before the first read)
+
+    returns: (similarity_score, offset)
+    """
     length_corrected_piece_similarity = lambda p1, p2: length_correction(piece_similarity(p1, p2), len(p1))
 
     assert len(read1) == len(read2)
     size = len(read1)
-    scores = []
-    for i in range(min_considered_overlap,size+1):
-        scores.append(
-            length_corrected_piece_similarity(read1[:i], read2[size-i:])
-        )
-        scores.append(
-            length_corrected_piece_similarity(read1[size-i:], read2[:i])
-        )
-    return max(scores)
+    scores_and_alignment_offset: list[tuple[float, int]] = []
 
-def similarity_score(read1, read2):
-    return best_alignment_similarity(read1, read2)
+    for i in range(min_considered_overlap,size+1):
+        scores_and_alignment_offset.append(
+            (length_corrected_piece_similarity(read1[:i], read2[size-i:]), -size+i)
+        )
+        scores_and_alignment_offset.append(
+            (length_corrected_piece_similarity(read1[size-i:], read2[:i]), size-i)
+        )
+    if return_all_results:
+        return scores_and_alignment_offset
+    return max(scores_and_alignment_offset, key=lambda x: x[0])
+
+def similarity_score(read1, read2)->float:
+    return best_alignment_similarity(read1, read2)[0]
+
+
+def best_ensemble_alignment(reference_reads: list[tuple[Read, int]], read: Read)->tuple[int, float]:
+    """Find the best alignment offset for a read based on multiple reference reads."""
+    all_alignment_scores = []
+    for reference_read, alignment_offset in reference_reads:
+        similarity_scores = best_alignment_similarity(reference_read.uncertain_text, read.uncertain_text, return_all_results=True)
+        similarity_scores = [(score, score_offset + alignment_offset) for score, score_offset in similarity_scores]
+        all_alignment_scores.extend(similarity_scores)
+    #print(all_alignment_scores)
+
+    alignment_options = {}
+    for score, offset in all_alignment_scores:
+        if offset not in alignment_options:
+            alignment_options[offset] = []
+        alignment_options[offset].append(score)
+
+    combined_alignment_options = {offset: sum(scores) / len(scores) * len(scores)**0.1  # small reward for more frequent alignments
+                                   for offset, scores in alignment_options.items()}
+    #print(alignment_options)
+    #print(combined_alignment_options)
+    #return max([(x,y) for x,y in d.items()], key=lambda x: x[1])
+    return max([(x,y) for x,y in combined_alignment_options.items()], key=lambda x: x[1])
 
 
 
@@ -195,9 +234,98 @@ def histogram_like(positions, end):
     print()
 
 
-def most_likely_restorer(read: Read):
-    return "".join([alphabet[max(range(4), key=lambda i: read.uncertain_text[j][i])] for j in range(len(read.uncertain_text))])
+def most_likely_restorer(uncertain_text: list[tuple[float, float, float, float]]):
+    return "".join([alphabet[max(range(4), key=lambda i: uncertain_text[j][i])] for j in range(len(uncertain_text))])
 
 
 def string_similarity(s1, s2):
     return sum([1 for i in range(len(s1)) if s1[i] == s2[i]]) / len(s1)
+
+
+def get_in_pot_alignment(pot: Pot)->tuple[dict[Read, int], dict[Read, float]]:
+    read_to_start_position = {}
+
+    # one read as a reference
+    reference_read = list(pot.members)[0]
+    read_to_start_position[reference_read] = 0
+    reads_to_alignment_certainty = {reference_read: 100} # this number is arbitrary, but should be high reletive to the other scores
+
+    for _ in range(2):  # iterativly improve (not only one round, as this would make the first to insert error-prone)
+        for read in pot.members:
+            for i in range(10):
+                # randomly choose 5 reference reads
+                reference_reads = [choice(list(read_to_start_position.items())) for _ in range(5)]
+                alignment_offset, score = best_ensemble_alignment(reference_reads, read)
+                reads_to_alignment_certainty[read] = score
+                read_to_start_position[read] = alignment_offset
+    return read_to_start_position, reads_to_alignment_certainty
+
+def show_read_alignment(read_to_start_position, highest_minus=20):
+    for read, start_position in read_to_start_position.items():
+        print(" " * (start_position+highest_minus), most_likely_restorer(read.uncertain_text))
+    print()
+
+
+def most_likely_pot_string(in_pot_alignment: dict[Read, int]) -> tuple[str, int]:
+    """Return the most likely string and the relative alignment offset relative to the reads"""
+    votes_per_position = {}
+    
+    for read, start_position in in_pot_alignment.items():
+        for i in range(len(read.uncertain_text)):
+            if i + start_position not in votes_per_position:
+                votes_per_position[i + start_position] = []
+            votes_per_position[i + start_position].append(read.uncertain_text[i])
+
+
+    highest_position = max(votes_per_position.keys())
+    lowest_position = min(votes_per_position.keys())
+
+    restored_string = ["-" for _ in range(highest_position - lowest_position + 1)]
+
+    for position, votes in votes_per_position.items():
+        sum_base_distribution = [0,0,0,0]
+        for vote in votes:
+            for i in range(4):
+                sum_base_distribution[i] += vote[i]
+        avg_base_distribution = [a/len(votes) for a in sum_base_distribution]
+
+        restored_string[position - lowest_position] = most_likely_restorer([avg_base_distribution])[0]
+    return "".join(restored_string), lowest_position
+
+    
+def correct_reads_with_restored_text(in_pot_alignment: dict[Read, int], restored_text: tuple[str, int], only_correct_if_change_maximal_percent=0.3):
+    """todo: only correct if the difference is not too high (avoid correcting those who do not belong to the pot)"""
+    restored_string, lowest_position = restored_text
+    corrected_reads = []
+    for read, start_position in in_pot_alignment.items():
+        corrected_read = Read(read.original_text, read.start_position, read.end_position, read.uncertainty_generator)
+        corrected_read.uncertain_text = list(map(certain_uncertainty_generator,
+        restored_string[start_position - lowest_position: start_position - lowest_position + len(read.uncertain_text)]
+        ))
+
+        # do not correct reads if it does not belong to the pot
+        if string_similarity(most_likely_restorer(read.uncertain_text), most_likely_restorer(corrected_read.uncertain_text)) < 1 - only_correct_if_change_maximal_percent:
+            corrected_reads.append(read)
+            continue
+        #print(f"correct \n{most_likely_restorer(read.uncertain_text)} to \n{most_likely_restorer(corrected_read.uncertain_text)} while real is \n{read.original_text}")
+        corrected_reads.append(corrected_read)
+    return corrected_reads
+        
+
+def most_likely_restorer_error_rate(reads: list[Read]):
+    similarities = [string_similarity(most_likely_restorer(r.uncertain_text), r.original_text) for r in reads]
+    print(similarities)
+    return 1 - sum(similarities) / len(similarities)
+
+
+def pot_correction(reads: list[Read], pot_count=5, iterations=2):
+    pots = get_pots(pot_count, reads)
+    for _ in range(iterations):
+        pot_iteration(pots, reads)
+    all_corrected_reads = []
+    for pot in pots:
+        read_to_start_position, _ = get_in_pot_alignment(pot)
+        restored_text = most_likely_pot_string(read_to_start_position)
+        corrected_reads = correct_reads_with_restored_text(read_to_start_position, restored_text)
+        all_corrected_reads += corrected_reads
+    return all_corrected_reads
