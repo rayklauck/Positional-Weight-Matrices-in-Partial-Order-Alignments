@@ -329,3 +329,81 @@ def pot_correction(reads: list[Read], pot_count=5, iterations=2):
         corrected_reads = correct_reads_with_restored_text(read_to_start_position, restored_text)
         all_corrected_reads += corrected_reads
     return all_corrected_reads
+
+
+def recursive_pot_sorting(reads: list[Read], subdivide_levels: int)->list[list[Read]]:
+    if subdivide_levels == 0:
+        return [reads]
+
+    pots = get_pots(2, reads)
+    for _ in range(2):
+        pot_iteration(pots, reads)
+
+    return [e for pot in pots for e in recursive_pot_sorting(list(pot.members), subdivide_levels-1)]
+    
+    
+
+
+
+
+
+
+
+
+##### kmer_hash
+
+
+class KmerHash:
+    def __init__(self, kmer_length, reads: list[Read]):
+        self.kmer_length = kmer_length
+        self.kmer_hash = {}
+        self.reads = reads
+
+        for read in reads:
+            text = most_likely_restorer(read.uncertain_text)
+            for i in range(len(text) - kmer_length + 1):
+                kmer = text[i: i+kmer_length]
+                if kmer not in self.kmer_hash:
+                    self.kmer_hash[kmer] = []
+                self.kmer_hash[kmer].append(read)
+
+    def get_adjacent_reads(self, kmer: str, max_distance):
+        
+        result = []
+        for query in get_max_n_error_ensemble(kmer, max_distance):
+            result += self.kmer_hash.get(query, [])
+        return result
+        
+        
+
+
+
+
+def get_one_error_ensemble(text: str):
+    """Generate all possible strings which have one error compared to the input string"""
+    result = []
+    for i in range(len(text)):
+        for base in alphabet:
+            if base != text[i]:
+                result.append(text[:i] + base + text[i+1:])
+    return result
+    
+
+def get_n_error_ensemble(text:str, n: int)->set[str]:
+    """Generate all possible strings which have n errors compared to the input string"""
+    if n == 0:
+        return {text}
+    result = set()
+    for i in range(len(text)):
+        for base in alphabet:
+            if base != text[i]:
+                result |= get_n_error_ensemble(text[:i] + base + text[i+1:], n-1)
+    return result
+
+
+def get_max_n_error_ensemble(text:str, n: int)->set[str]:
+    """Generate all possible strings which have max n errors compared to the input string"""
+    result = set()
+    for i in range(n+1):
+        result |= get_n_error_ensemble(text, i)
+    return result
