@@ -120,10 +120,15 @@ def carefully_chached(func):
         result = func(graph_position, sequence_still_to_align)
         cache[fingerprint] = result
         return result
-    return wrapper
+    
+    def wiper():
+        nonlocal cache
+        cache = {}
+    return wrapper, wiper
 
 
-@carefully_chached
+
+
 def dp_memoized_function(
     graph_position: GraphNode | None, sequence_still_to_align: list[BaseLike]
 ) -> tuple[float,list[TracePoint]]:
@@ -205,36 +210,43 @@ def dp_memoized_function(
     return best_option.cost, best_option.trace
 
 
+dp_memoized_function, wiper = carefully_chached(dp_memoized_function)
+
+def wiped_dp_memoized_function(
+    graph_position: GraphNode | None, sequence_still_to_align: list[BaseLike]
+) -> tuple[float,list[TracePoint]]:
+    wiper()
+    return dp_memoized_function(graph_position, sequence_still_to_align)
+
 
 def initial_graph_of(sequence: list[BaseLike]) -> Graph:
     """Creates initial graph from sequence"""
+    read_node_chain = create_read_node_chain(sequence)
     graph = Graph([])
-    current_read_node = ReadNode(sequence[0])
+    graph_nodes = []
 
-    for i, base in enumerate(sequence):
-        next_read_node = ReadNode(sequence[i+1]) if i+1 < len(sequence) else None
-        current_read_node.next = next_read_node
-
+    current_read_node = read_node_chain
+    while current_read_node is not None:
         layer = AssoziatedLayer()
         graph_node = GraphNode()
         layer.add(graph_node)
-
-        if i == 0:
-            graph.start_nodes.append(graph_node)
-
         graph_node.add(current_read_node)
-        current_read_node = next_read_node
+        graph_nodes.append(graph_node)
+        current_read_node = current_read_node.next
+    
+    graph.start_nodes.append(graph_nodes[0])
     return graph
 
 
 def create_read_node_chain(sequence: list[BaseLike]) -> ReadNode:
     """Creates a chain of read nodes from sequence"""
     current_read_node = ReadNode(sequence[0])
+    head = current_read_node
     for base in sequence[1:]:
         next_read_node = ReadNode(base)
         current_read_node.next = next_read_node
         current_read_node = next_read_node
-    return current_read_node
+    return head
 
 
 def add_trace_to_graph(sequence: list[BaseLike], trace: list[TracePoint]):
@@ -244,12 +256,14 @@ def add_trace_to_graph(sequence: list[BaseLike], trace: list[TracePoint]):
         if trace_node.operation == DpOperation.MATCH:
             # add to existing graph node
             trace_node.graph_node.add(read_node)
+            read_node = read_node.next
 
         elif trace_node.operation == DpOperation.REPLACE:
             # create (new) parallel graph node
             new_graph_node = GraphNode()
             trace_node.graph_node.layer.add(new_graph_node)
             new_graph_node.add(read_node)
+            read_node = read_node.next
 
         elif trace_node.operation == DpOperation.INSERT:
             # ignore the existing graph node (jump over it)
@@ -262,6 +276,7 @@ def add_trace_to_graph(sequence: list[BaseLike], trace: list[TracePoint]):
             new_layer.add(new_graph_node)
             new_graph_node.add(read_node)
             # should be automatically connected to the other layers via the read-linked-list
+            read_node = read_node.next
 
         elif trace_node.operation == DpOperation.END:
             # sequence successfully aligned
@@ -270,25 +285,24 @@ def add_trace_to_graph(sequence: list[BaseLike], trace: list[TracePoint]):
         else:
             raise ValueError(f"Unknown operation: {trace_node.operation}")
 
+        
 
-
-
-        read_node = read_node.next
-
-
+def add_to_graph_start_node(sequence: list[BaseLike], start_graph_node: GraphNode):
+    _, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    add_trace_to_graph(sequence, trace)
     
 
 
 
 
 def tes_dp_same():
-    start_graph_node = initial_graph_of(make_regular(A)).start_nodes[0]
-    sequence = make_regular(A)
-    cost, trace = dp_memoized_function(start_graph_node, sequence)
+    start_graph_node = initial_graph_of(make_regular(A, T, G)).start_nodes[0]
+    sequence = make_regular(A, C, G)
+    add_to_graph_start_node(sequence, start_graph_node)
+    sequence = make_regular(A, C, G)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    print(trace)
     assert cost == 0
-    assert len(trace) == 1
-    assert trace[0].operation == DpOperation.MATCH
-    assert trace[0].graph_node == start_graph_node
 
 
 if __name__ == "__main__":
