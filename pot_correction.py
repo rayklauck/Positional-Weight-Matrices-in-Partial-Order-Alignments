@@ -28,10 +28,18 @@ def string_similarity(s1, s2):
     assert len(s1) == len(s2)
     return sum([1 for i in range(len(s1)) if s1[i] == s2[i]]) / len(s1)
 
+def normalize(vector: list[float]) -> list[float]:
+    sum_ = sum(vector)
+    if sum_ == 0:
+        return [1 / len(vector) for _ in vector]
+    return [a / sum_ for a in vector]
+
+def majority_vote(votes: list[t.Any]) -> t.Any:
+    return max(set(votes), key=votes.count)
 
 alphabet = ["A", "T", "C", "G"]
-base_index = {"A": 0, "T": 1, "C": 2, "G": 3}
-
+base_to_index = {"A": 0, "T": 1, "C": 2, "G": 3}
+index_to_base = {0: "A", 1: "T", 2: "C", 3: "G"}
 
 def generate_dna(length):
     return "".join([choice(alphabet) for _ in range(length)])
@@ -58,12 +66,30 @@ def just(base: str) -> UncertainBase:
     return certain_uncertainty_generator(base)
 
 
-def probably(base: str, p=0.7) -> UncertainBase:
+def non_deterministic_probably(base: str, p=0.7) -> UncertainBase:
     return gauss_unsharp_uncertainty_generator(base, 1 - p)
+
+
+def probably(base: str, p=0.7) -> UncertainBase:
+    r = [(1 - p) / 3 for _ in range(4)]
+    r[base_to_index[base]] = p
+    return r
+
+
+def probably_those(*bases: list[str], p=0.7) -> list[UncertainBase]:
+    return [probably(base, p) for base in bases]
 
 
 def just_those(*bases: list[str]) -> list[UncertainBase]:
     return [certain_uncertainty_generator(base) for base in bases]
+
+
+def mix(*bases: list[str]) -> UncertainBase:
+    n = len(bases)
+    counts = [0, 0, 0, 0]
+    for base in bases:
+        counts[base_to_index[base]] += 1
+    return [count / n for count in counts]
 
 
 def certain(uncertain_base: UncertainBase) -> str:
@@ -98,7 +124,7 @@ def percent_most_likely_uncertainty_generator(base, inprecision_rate=0.15):
 
     Probability that correct base does not have highest probability is 'inprecision_rate'
     """
-    index = base_index[base]
+    index = base_to_index[base]
     w1 = 1 / 3 * (1 / (1 / inprecision_rate - 1))
     # print(w1)
     # result = [0,0,0,0]
@@ -121,7 +147,7 @@ def percent_most_likely_uncertainty_generator(base, inprecision_rate=0.15):
 
 def certain_uncertainty_generator(base):
     """Simulating perfect measurements"""
-    index = base_index[base]
+    index = base_to_index[base]
     result = [0, 0, 0, 0]
     result[index] = 1
     return result

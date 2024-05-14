@@ -18,11 +18,15 @@ class BaseLike(ABC):
     def dp_conversion_penalty(self, value: object) -> float:
         ...
 
+    @classmethod
+    def consent(cls, sequence: list["BaseLike"]) -> "BaseLike":
+        return majority_vote(sequence)
+
 
 class ReadNode:
     """LinkedList for one read"""
 
-    def __init__(self, base: BaseLike, next: t.Union["ReadNode" , None] = None):
+    def __init__(self, base: BaseLike, next: t.Union["ReadNode", None] = None):
         self.next = next
         self.base = base
         self.graph_node = None
@@ -41,14 +45,20 @@ class GraphNode:
 
     @property
     def successors(self) -> list["GraphNode"]:
-        return list({read_node.next.graph_node for read_node in self.read_nodes if read_node.next is not None})
+        return list(
+            {
+                read_node.next.graph_node
+                for read_node in self.read_nodes
+                if read_node.next is not None
+            }
+        )
 
     @property
     def base(self) -> BaseLike:
         """Guaranteed that all read_nodes will have the same base here.
         And there will be never a GraphNode with no ReadNode."""
         return self.read_nodes[0].base
-    
+
     def __repr__(self):
         return f"GraphNode({self.base})"
 
@@ -70,27 +80,78 @@ class AssoziatedLayer:
 class Graph:
     start_nodes: list[GraphNode]
 
-class RegularBase(BaseLike):
-    """Base with associated probability"""
 
+class RegularBase(BaseLike):
     def __init__(self, base: str):
         self.base = base
 
+    def __hash__(self) -> int:
+        return hash(self.base)
+
     def __eq__(self, value: object) -> bool:
+        if not isinstance(value, RegularBase):
+            return False
         return self.base == value.base
 
     def dp_conversion_penalty(self, value: object) -> float:
         return self.base != value.base
     
+    @classmethod
+    def consent(cls, sequence: list["BaseLike"]) -> "BaseLike":
+        histogram = {}
+        for base in sequence:
+            histogram[base] = histogram.get(base, 0) + 1
+        return max(histogram, key=histogram.get)
+
+
     def __repr__(self):
         return self.base
+
+
+class PositionalWeightMatrixBase(BaseLike):
+    """Base with associated probability"""
+
+    def __init__(self, base: UncertainBase) -> None:
+        self.base = base
+
+    def __hash__(self) -> int:
+        return hash(self.base)
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, PositionalWeightMatrixBase):
+            return False
+        return self.base == value.base
+
+    def dp_conversion_penalty(self, value: object) -> float:
+        return 1 - uncertain_base_scalar_product(self.base, value.base)
+    
+    @classmethod
+    def consent(cls, sequence: list['PositionalWeightMatrixBase']) -> 'PositionalWeightMatrixBase':
+        histogram = [0,0,0,0]
+        for b in sequence:
+            for i, v in enumerate(b.base):
+                histogram[i] += v
+        
+        return PositionalWeightMatrixBase(normalize(histogram))
+
+
+    def __repr__(self):
+        return "~" + most_likely_base_restorer(self.base)
 
 
 def make_regular(*bases: list[str]) -> list[RegularBase]:
     return [RegularBase(base) for base in bases]
 
+
+def make_uncertain_regular(
+    *bases: list[UncertainBase],
+) -> list[PositionalWeightMatrixBase]:
+    return [PositionalWeightMatrixBase(base) for base in bases]
+
+
 class DpOperation(Enum):
     """Enum for DP operations"""
+
     DELETE = 1
     INSERT = 2
     REPLACE = 3
@@ -101,8 +162,9 @@ class DpOperation(Enum):
 @dataclass
 class DpOption:
     """Option for DP"""
+
     cost: float
-    trace: list['TracePoint']
+    trace: list["TracePoint"]
 
 
 @dataclass
@@ -112,49 +174,59 @@ class TracePoint:
 
 
 def carefully_chached(func):
-    cache: dict[ tuple[GraphNode, int], tuple[float,list[TracePoint]]] = {}
-    def wrapper(graph_position: GraphNode | None, sequence_still_to_align: list[BaseLike]):
+    cache: dict[tuple[GraphNode, int], tuple[float, list[TracePoint]]] = {}
+
+    def wrapper(
+        graph_position: GraphNode | None, sequence_still_to_align: list[BaseLike]
+    ):
         fingerprint = graph_position, len(sequence_still_to_align)
         if fingerprint in cache:
             return cache[fingerprint]
         result = func(graph_position, sequence_still_to_align)
         cache[fingerprint] = result
         return result
-    
+
     def wiper():
         nonlocal cache
         cache = {}
+
     return wrapper, wiper
-
-
 
 
 def dp_memoized_function(
     graph_position: GraphNode | None, sequence_still_to_align: list[BaseLike]
-) -> tuple[float,list[TracePoint]]:
+) -> tuple[float, list[TracePoint]]:
     """
     returns:
         - minimum cost, way through the graph
     """
-    print('CALL: ',graph_position, sequence_still_to_align)
+    print("CALL: ", graph_position, sequence_still_to_align)
 
     # Base cases
     if sequence_still_to_align == []:
         # choose end statement
-        return 0, [TracePoint(DpOperation.END, graph_position)] if graph_position is not None else []
+        return (
+            0,
+            [TracePoint(DpOperation.END, graph_position)]
+            if graph_position is not None
+            else [],
+        )
 
     if graph_position is None:
         # must insert all remaining bases
 
         sub_cost, trace = dp_memoized_function(None, sequence_still_to_align[1:])
-        return DELETION_PENALTY + sub_cost, [TracePoint(DpOperation.DELETE, None)] + trace.copy()
+        return (
+            DELETION_PENALTY + sub_cost,
+            [TracePoint(DpOperation.DELETE, None)] + trace.copy(),
+        )
 
         # todo
         # or should this case also fall under a free end statement (other relative to this?)
-        
-       
-        
-    successors = graph_position.successors if graph_position.successors != [] else [None]
+
+    successors = (
+        graph_position.successors if graph_position.successors != [] else [None]
+    )
 
     # Recursive case
     options: list[DpOption] = []
@@ -191,12 +263,19 @@ def dp_memoized_function(
         sub_cost, trace = dp_memoized_function(
             next_graph_position, sequence_still_to_align[1:]
         )
-        
+
         cost_here = graph_position.base.dp_conversion_penalty(
             sequence_still_to_align[0]
         )
 
-        trace = [TracePoint(DpOperation.REPLACE if cost_here > 0 else DpOperation.MATCH, graph_position)] + trace.copy()
+        trace = [
+            TracePoint(
+                DpOperation.MATCH # same event. Does not mean there is no penalty
+                if graph_position.base == sequence_still_to_align[0]
+                else DpOperation.REPLACE,
+                graph_position,
+            )
+        ] + trace.copy()
 
         options.append(
             DpOption(
@@ -212,9 +291,10 @@ def dp_memoized_function(
 
 dp_memoized_function, wiper = carefully_chached(dp_memoized_function)
 
+
 def wiped_dp_memoized_function(
     graph_position: GraphNode | None, sequence_still_to_align: list[BaseLike]
-) -> tuple[float,list[TracePoint]]:
+) -> tuple[float, list[TracePoint]]:
     wiper()
     return dp_memoized_function(graph_position, sequence_still_to_align)
 
@@ -233,7 +313,7 @@ def initial_graph_of(sequence: list[BaseLike]) -> Graph:
         graph_node.add(current_read_node)
         graph_nodes.append(graph_node)
         current_read_node = current_read_node.next
-    
+
     graph.start_nodes.append(graph_nodes[0])
     return graph
 
@@ -285,24 +365,48 @@ def add_trace_to_graph(sequence: list[BaseLike], trace: list[TracePoint]):
         else:
             raise ValueError(f"Unknown operation: {trace_node.operation}")
 
-        
 
 def add_to_graph_start_node(sequence: list[BaseLike], start_graph_node: GraphNode):
     _, trace = wiped_dp_memoized_function(start_graph_node, sequence)
     add_trace_to_graph(sequence, trace)
-    
 
 
+def consent_of_graph(graph: Graph) -> t.Iterator[BaseLike]:
+    """Returns the most likely sequence from the graph"""
+    current_graph_node = graph.start_nodes[0]  # TODO: assumption only one start
+    sequence = []
+
+    current_layer = current_graph_node.layer
+
+    while current_layer is not None:
+        layer_consent_votes = []
+        for graph_node in current_layer.graph_nodes:
+            for read_node in graph_node.read_nodes:
+                layer_consent_votes.append(read_node.base)
+        sequence.append( BaseLike.consent(layer_consent_votes))
+
+        next_layer_candidates = []
+        for graph_node in current_layer.graph_nodes:
+            for read_node in graph_node.read_nodes:
+                next_layer_candidates.append(read_node.next.graph_node.layer if read_node.next is not None else None)
+        next_layer = majority_vote(next_layer_candidates)
+        current_layer = next_layer
+    return sequence
+        
+
+def multiple_sequence_alignment(sequences: list[list[BaseLike]]) -> Graph:
+    graph = initial_graph_of(sequences[0])
+    for sequence in sequences[1:]:
+        add_to_graph_start_node(sequence, graph.start_nodes[0])
+    return graph
 
 
 def tes_dp_same():
-    start_graph_node = initial_graph_of(make_regular(A, T, G)).start_nodes[0]
-    sequence = make_regular(A, C, G)
-    add_to_graph_start_node(sequence, start_graph_node)
-    sequence = make_regular(A, C, G)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
-    print(trace)
-    assert cost == 0
+    graph = multiple_sequence_alignment([
+          make_regular(A, T, C),
+          make_regular(A, G, C),
+          make_regular(A, G, C),])
+    assert consent_of_graph(graph) == make_regular(A, G, C)
 
 
 if __name__ == "__main__":
