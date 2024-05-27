@@ -31,6 +31,9 @@ class ReadNode:
         self.base = base
         self.graph_node = None
 
+    def __repr__(self):
+        return f"R({self.base})"
+
 
 class GraphNode:
     """Node representing vertex for specific base at certain position."""
@@ -60,7 +63,7 @@ class GraphNode:
         return self.read_nodes[0].base
 
     def __repr__(self):
-        return f"GraphNode({self.base})"
+        return f"N({self.base}, {self.read_nodes}) -> {self.successors}"
 
 
 class AssoziatedLayer:
@@ -96,8 +99,8 @@ class RegularBase(BaseLike):
     def dp_conversion_penalty(self, value: object) -> float:
         return self.base != value.base
     
-    @classmethod
-    def consent(cls, sequence: list["BaseLike"]) -> "BaseLike":
+    @staticmethod
+    def consent(sequence: list["BaseLike"]) -> "BaseLike":
         histogram = {}
         for base in sequence:
             histogram[base] = histogram.get(base, 0) + 1
@@ -125,8 +128,8 @@ class PositionalWeightMatrixBase(BaseLike):
     def dp_conversion_penalty(self, value: object) -> float:
         return 1 - uncertain_base_scalar_product(self.base, value.base)
     
-    @classmethod
-    def consent(cls, sequence: list['PositionalWeightMatrixBase']) -> 'PositionalWeightMatrixBase':
+    @staticmethod
+    def consent(sequence: list['PositionalWeightMatrixBase']) -> 'PositionalWeightMatrixBase':
         histogram = [0,0,0,0]
         for b in sequence:
             for i, v in enumerate(b.base):
@@ -136,7 +139,8 @@ class PositionalWeightMatrixBase(BaseLike):
 
 
     def __repr__(self):
-        return "~" + most_likely_base_restorer(self.base)
+        #return "~" + most_likely_base_restorer(self.base)
+        return str(self.base)
 
 
 def make_regular(*bases: list[str]) -> list[RegularBase]:
@@ -157,6 +161,7 @@ class DpOperation(Enum):
     REPLACE = 3
     MATCH = 4
     END = 5
+    START = 6
 
 
 @dataclass
@@ -200,8 +205,6 @@ def dp_memoized_function(
     returns:
         - minimum cost, way through the graph
     """
-    print("CALL: ", graph_position, sequence_still_to_align)
-
     # Base cases
     if sequence_still_to_align == []:
         # choose end statement
@@ -283,6 +286,9 @@ def dp_memoized_function(
                 trace,
             )
         )
+
+        # flexible start option
+        
 
     # return min of all possibilities
     best_option = min(options, key=lambda x: x.cost)
@@ -383,7 +389,8 @@ def consent_of_graph(graph: Graph) -> t.Iterator[BaseLike]:
         for graph_node in current_layer.graph_nodes:
             for read_node in graph_node.read_nodes:
                 layer_consent_votes.append(read_node.base)
-        sequence.append( BaseLike.consent(layer_consent_votes))
+        class_of_base = layer_consent_votes[0].__class__ # find out which classes consent function to use
+        sequence.append(class_of_base.consent(layer_consent_votes))
 
         next_layer_candidates = []
         for graph_node in current_layer.graph_nodes:
@@ -401,12 +408,26 @@ def multiple_sequence_alignment(sequences: list[list[BaseLike]]) -> Graph:
     return graph
 
 
+def read_consent(reads: list[Read]):
+    rounded_base_like_reads = list(map(
+        lambda read: [RegularBase(b)for b in most_likely_restorer(read.uncertain_text)]
+        ,reads))
+    graph = multiple_sequence_alignment(rounded_base_like_reads)
+    return consent_of_graph(graph)
+
+def probabilistic_read_consens():
+    pass
+
+
 def tes_dp_same():
-    graph = multiple_sequence_alignment([
-          make_regular(A, T, C),
-          make_regular(A, G, C),
-          make_regular(A, G, C),])
-    assert consent_of_graph(graph) == make_regular(A, G, C)
+    print(consent_of_graph(
+        multiple_sequence_alignment([
+            make_uncertain_regular(just(A), just(T), just(C)),
+            make_uncertain_regular(just(A), just(G), just(C)),
+        ])
+    )[2].base )
+    assert False
+
 
 
 if __name__ == "__main__":

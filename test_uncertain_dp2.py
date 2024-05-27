@@ -504,21 +504,73 @@ def test_consent_positional_base_matrix():
 
 def test_consent_of_graph():
     graph = multiple_sequence_alignment([
-          make_regular(A, T, C),
           make_regular(A, G, C),
-          make_regular(A, G, C),])
+          make_regular(A, G, C),
+                    make_regular(A, T, C),
+])
     assert consent_of_graph(graph) == make_regular(A, G, C)
 
-'''
+
 def test_consent_positional_weight_matrix():
     assert consent_of_graph(
         multiple_sequence_alignment([
-            make_uncertain_regular(just(A), just(T), just(C)),
-            make_uncertain_regular(just(A), just(G), just(C)),
-            make_uncertain_regular(just(A), just(G), just(C)),
+            make_uncertain_regular(just(A), just(G), just(A)),
+            make_uncertain_regular(just(A), just(T), just(A)),
         ])
-    ) == make_uncertain_regular(just(A), mix(T,G,G), just(C))
-'''
+    )==make_uncertain_regular(just(A), mix(T, G), just(A))
+
+
+def test_consent_positional_weight_matrix_delete():
+    assert consent_of_graph(
+        multiple_sequence_alignment([
+            make_uncertain_regular(just(A), just(T), just(A), just(C)),
+            make_uncertain_regular(just(A), just(T), just(A), just(C)),
+            make_uncertain_regular(just(A), just(A), just(C)),
+
+        ])
+    )==make_uncertain_regular(just(A), just(T), just(A), just(C))
+
+
+
+def test_consent_positional_weight_matrix_insert():
+    assert consent_of_graph(
+        multiple_sequence_alignment([
+            make_uncertain_regular(*just_those(A,T,A,C)),
+            make_uncertain_regular(*just_those(A,T,A,C)),
+            make_uncertain_regular(*just_those(A,T,G,A,C)),
+
+        ])
+    )==make_uncertain_regular(*just_those(A,T,A,C))
+
+
+def test_consent_positional_weight_matrix_multiple_insert():
+    assert consent_of_graph(
+        multiple_sequence_alignment([
+            make_uncertain_regular(*just_those(A,C,T,A,C)),
+            make_uncertain_regular(*just_those(A,T,A,C)),
+            make_uncertain_regular(*just_those(A,T,A,C)),
+            make_uncertain_regular(*just_those(A,T,A,C)),
+            make_uncertain_regular(*just_those(A,T,G,T,A,C)),
+
+        ])
+    )==make_uncertain_regular(*just_those(A,T,A,C))
+
+
+
+def test_consent_positional_weight_matrix_complex():
+    consent_of_graph(
+        multiple_sequence_alignment([
+            make_uncertain_regular(*just_those(A,T,A,G,C,C)),
+            make_uncertain_regular(*just_those(A,C,A,C,C)),
+            make_uncertain_regular(*just_those(A,T,A,C,C)),
+            make_uncertain_regular(*just_those(A,C,G,C,C)),
+            make_uncertain_regular(*just_those(A,C,A,C,C)),
+        ])
+    )==make_uncertain_regular(just(A),mix(T,T,C,C,C),mix(G,A,A,A,A),just(C),just(C))
+
+
+def test_rigth_consent_from_overritten():
+    PositionalWeightMatrixBase.consent(make_uncertain_regular(mix(A, C), just(A))) == PositionalWeightMatrixBase(mix(A,A, C))
 
 # todo: account for flexible start (not necessarily at the start of the graph)
 # todo: multiple starting points in general

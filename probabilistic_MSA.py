@@ -69,7 +69,7 @@ def dp_with_probabilities(
                 queue.append((sequence2[i], BLUE))
 
     for base, color in reversed(queue):
-        print_color(f"{most_likely_base_restorer(base)}", color, end="")
+        colored_print(f"{most_likely_base_restorer(base)}", color, end="")
 
         # print_color(f"{most_likely_base_restorer(sequence1[j-1])}", RED, end='')
 

@@ -34,8 +34,11 @@ def normalize(vector: list[float]) -> list[float]:
         return [1 / len(vector) for _ in vector]
     return [a / sum_ for a in vector]
 
+#def majority_vote(votes: list[t.Any]) -> t.Any:
+#    return max(set(votes), key=votes.count)
+
 def majority_vote(votes: list[t.Any]) -> t.Any:
-    return max(set(votes), key=votes.count)
+    return max(votes, key=votes.count)
 
 alphabet = ["A", "T", "C", "G"]
 base_to_index = {"A": 0, "T": 1, "C": 2, "G": 3}
@@ -54,9 +57,11 @@ YELLOW = 33
 WHITE = 37
 
 
-def print_color(text: str, color: int, *args, **kwargs):
-    print(f"\033[1;{color}m{text}\033[0m", *args, **kwargs)
+def colored_print(text: str, color_code: int, *args, **kwargs):
+    print(colored_string(text,color_code), *args, **kwargs)
 
+def colored_string(text: str, color_code: int) -> str:
+    return f"\033[1;{color_code}m{text}\033[0m"
 
 def uncertain_base_scalar_product(base1: UncertainBase, base2: UncertainBase):
     return sum([base1[i] * base2[i] for i in range(4)])
@@ -113,7 +118,14 @@ class Read:
         )
 
     def __repr__(self):
-        return f"<{self.original_text}>"
+        result = "<"
+        for i in range(len(self.uncertain_text)):
+            b = most_likely_base_restorer(self.uncertain_text[i])
+            if b == self.original_text[i]:
+                result += b
+            else:
+                result += colored_string(b, RED)
+        return result + ">"
 
     def __hash__(self) -> int:
         return id(self)
