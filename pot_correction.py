@@ -118,7 +118,7 @@ class Read:
         )
 
     def __repr__(self):
-        result = "<"
+        result = " "*self.start_position +"<"
         for i in range(len(self.uncertain_text)):
             b = most_likely_base_restorer(self.uncertain_text[i])
             if b == self.original_text[i]:
@@ -126,9 +126,17 @@ class Read:
             else:
                 result += colored_string(b, RED)
         return result + ">"
+    
+    #def indented_string(self):
+    #    return "." * self.start_position + repr(self)
 
     def __hash__(self) -> int:
         return id(self)
+    
+    def copy(self):
+        result = Read(self.original_text, self.start_position, self.end_position, self.uncertainty_generator)
+        result.uncertain_text = self.uncertain_text
+        return result
 
 
 def percent_most_likely_uncertainty_generator(base, inprecision_rate=0.15):

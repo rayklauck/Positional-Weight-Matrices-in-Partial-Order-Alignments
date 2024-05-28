@@ -41,7 +41,7 @@ def test_graph_initialization_layer():
 def test_dp_same_one_base():
     start_graph_node = initial_graph_of(make_regular(A)).start_nodes[0]
     sequence = make_regular(A)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 0
     assert len(trace) == 1
     assert trace[0].operation == DpOperation.MATCH
@@ -51,7 +51,7 @@ def test_dp_same_one_base():
 def test_dp_same_two_bases():
     start_graph_node = initial_graph_of(make_regular(C, G)).start_nodes[0]
     sequence = make_regular(C, G)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 0
     assert len(trace) == 2
     assert trace[0].operation == DpOperation.MATCH
@@ -63,7 +63,7 @@ def test_dp_same_two_bases():
 def test_dp_same_multiple_bases():
     start_graph_node = initial_graph_of(make_regular(C, G, A, T)).start_nodes[0]
     sequence = make_regular(C, G, A, T)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 0
     assert len(trace) == 4
     assert trace[0].operation == DpOperation.MATCH
@@ -79,7 +79,7 @@ def test_dp_same_multiple_bases():
 def test_dp_one_replacement():
     start_graph_node = initial_graph_of(make_regular(C, G, A)).start_nodes[0]
     sequence = make_regular(C, T, A)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == RegularBase(T).dp_conversion_penalty(RegularBase(G))
     assert len(trace) == 3
     assert trace[0].operation == DpOperation.MATCH
@@ -93,17 +93,17 @@ def test_dp_one_replacement():
 def test_dp_end():
     start_graph_node = initial_graph_of(make_regular(A)).start_nodes[0]
     sequence = []
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 0
     assert len(trace) == 1
-    assert trace[0].operation == DpOperation.END
+    assert trace[0].operation == DpOperation.INSERT_ALL_END
     assert trace[0].graph_node == start_graph_node
 
 
 def test_dp_one_insertion_scenario():
     start_graph_node = initial_graph_of(make_regular(G, T, A, C)).start_nodes[0]
     sequence = make_regular(G, A, C)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == INSERTION_PENALTY
     assert len(trace) == 4
     assert trace[0].operation == DpOperation.MATCH
@@ -119,7 +119,7 @@ def test_dp_one_insertion_scenario():
 def test_dp_one_deletion_scenario():
     start_graph_node = initial_graph_of(make_regular(G, A, C)).start_nodes[0]
     sequence = make_regular(G, T, A, C)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == DELETION_PENALTY
     assert len(trace) == 4
     assert trace[0].operation == DpOperation.MATCH
@@ -133,13 +133,14 @@ def test_dp_one_deletion_scenario():
 
 
 def test_dp_mixed_scenario():
-    start_graph_node = initial_graph_of(make_regular(G, A, C, T, T, G, C)).start_nodes[
+    start_graph_node = initial_graph_of(make_regular(G, A, C, T, T, G, C, C, C)).start_nodes[
         0
     ]
-    sequence = make_regular(G, A, T, T, G, A, C)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    sequence = make_regular(G, A, T, T, G, A, C, C, C)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
+    #assert [t.operation.name for t in trace] == False
     assert cost == INSERTION_PENALTY + DELETION_PENALTY
-    assert len(trace) == 8
+    assert len(trace) == 10
     assert trace[0].operation == DpOperation.MATCH
     assert trace[0].graph_node.base == RegularBase(G)
     assert trace[1].operation == DpOperation.MATCH
@@ -156,6 +157,10 @@ def test_dp_mixed_scenario():
     assert trace[6].graph_node.base == RegularBase(C)
     assert trace[7].operation == DpOperation.MATCH
     assert trace[7].graph_node.base == RegularBase(C)
+    assert trace[8].operation == DpOperation.MATCH
+    assert trace[8].graph_node.base == RegularBase(C)
+    assert trace[9].operation == DpOperation.MATCH
+    assert trace[9].graph_node.base == RegularBase(C)
 
 
 def test_dp_mixed_scenario2():
@@ -163,7 +168,7 @@ def test_dp_mixed_scenario2():
         make_regular(G, A, C, T, T, G, C, T, A, A)
     ).start_nodes[0]
     sequence = make_regular(G, A, G, T, T, G, T, A, A)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert (
         cost == RegularBase(C).dp_conversion_penalty(RegularBase(G)) + INSERTION_PENALTY
     )
@@ -193,7 +198,7 @@ def test_dp_mixed_scenario2():
 def test_add_to_graph_single_match():
     start_graph_node = initial_graph_of(make_regular(A)).start_nodes[0]
     sequence = make_regular(A)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     add_trace_to_graph(sequence, trace)
     assert len(start_graph_node.read_nodes) == 2
 
@@ -201,7 +206,7 @@ def test_add_to_graph_single_match():
 def test_add_to_graph_multiple_match():
     start_graph_node = initial_graph_of(make_regular(A, T, G)).start_nodes[0]
     sequence = make_regular(A, T, G)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     add_trace_to_graph(sequence, trace)
     assert len(start_graph_node.read_nodes) == 2
     assert len(start_graph_node.layer.graph_nodes) == 1
@@ -211,13 +216,15 @@ def test_add_to_graph_multiple_match():
 
 
 def test_add_to_graph_replace():
-    start_graph_node = initial_graph_of(make_regular(A, T, G)).start_nodes[0]
-    sequence = make_regular(G, T, G)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    start_graph_node = initial_graph_of(make_regular(C, C, A, T, G)).start_nodes[0]
+    sequence = make_regular(C, C, G, T, G)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     add_trace_to_graph(sequence, trace)
-    assert len(start_graph_node.read_nodes) == 1
-    assert len(start_graph_node.layer.graph_nodes) == 2
-    bases_here = list(map(lambda x: x.base, start_graph_node.layer.graph_nodes))
+
+    node = start_graph_node.successors[0].successors[0]
+    assert len(node.read_nodes) == 1
+    assert len(node.layer.graph_nodes) == 2
+    bases_here = list(map(lambda x: x.base, node.layer.graph_nodes))
     assert RegularBase(G) in bases_here
     assert RegularBase(A) in bases_here
 
@@ -225,7 +232,7 @@ def test_add_to_graph_replace():
 def test_add_to_graph_replace2():
     start_graph_node = initial_graph_of(make_regular(A, T, G)).start_nodes[0]
     sequence = make_regular(A, C, G)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     add_trace_to_graph(sequence, trace)
     assert len(start_graph_node.successors) == 2
 
@@ -301,7 +308,7 @@ def test_arbitrary_alignment_to_graph():
     sequence = make_regular(A, C, G)
     add_to_graph_start_node(sequence, start_graph_node)
     sequence = make_regular(A, C, G)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 0
 
 
@@ -311,11 +318,11 @@ def test_arbitrary_alignment_to_graph2():
     add_to_graph_start_node(sequence, start_graph_node)
 
     sequence = make_regular(C, A, C, G)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 1
 
     sequence = make_regular(C, A, T, G, G)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 1
 
 
@@ -325,7 +332,7 @@ def test_arbitrary_alignment_to_graph_not_branch_jumping():
     add_to_graph_start_node(sequence, start_graph_node)
 
     sequence = make_regular(C, A, T, C, C, G)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 1  # would be 0 if it could jump branches
 
 
@@ -339,7 +346,7 @@ def test_arbitrary_alignment_to_graph_take_multiple_branches():
     add_to_graph_start_node(sequence, start_graph_node)
 
     sequence = make_regular(A, T, C, T, A, T, C, C, A, T, C, G)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 0
 
 
@@ -353,7 +360,7 @@ def test_uncertain_base_scalar_product():
 def test_align_positional_weight_matrix_reads_single_identical():
     start_graph_node = initial_graph_of(make_uncertain_regular(just(A))).start_nodes[0]
     sequence = make_uncertain_regular(just(A))
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 0
     assert len(trace) == 1
     assert trace[0].operation == DpOperation.MATCH
@@ -363,9 +370,9 @@ def test_align_positional_weight_matrix_reads_single_non_identical():
     start_graph_node = initial_graph_of(
         make_uncertain_regular([0, 0, 0, 1])
     ).start_nodes[0]
-    sequence = make_uncertain_regular([0, 0.3, 0.3, 0.4])
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
-    assert cost == 0.6
+    sequence = make_uncertain_regular([0, 0.1, 0.1, 0.8])
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
+    assert round(cost,8) == 0.2
     assert len(trace) == 1
     assert trace[0].operation == DpOperation.REPLACE
 
@@ -375,7 +382,7 @@ def test_align_positional_weight_matrix_reads_identical_sequence():
         make_uncertain_regular(*just_those(A, T, C))
     ).start_nodes[0]
     sequence = make_uncertain_regular(*just_those(A, T, C))
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 0
 
 
@@ -384,7 +391,7 @@ def test_align_positional_weight_matrix_reads_non_identical_sequence():
         make_uncertain_regular(*just_those(A, T, C, T, T))
     ).start_nodes[0]
     sequence = make_uncertain_regular(*just_those(A, T, G, T, T))
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 1
 
 
@@ -393,7 +400,7 @@ def test_align_positional_weight_matrix_reads_non_identical_sequence():
         make_uncertain_regular(*probably_those(A, T, p=0.7))
     ).start_nodes[0]
     sequence = make_uncertain_regular(*probably_those(A, T, p=0.7))
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert len(trace) == 2
     assert trace[0].operation == DpOperation.REPLACE
     assert trace[1].operation == DpOperation.REPLACE
@@ -407,18 +414,19 @@ def test_align_positional_weight_matrix_reads_non_identical_sequence():
         make_uncertain_regular(*just_those(A, T, C, T, T))
     ).start_nodes[0]
     sequence = make_uncertain_regular(*just_those(A, T, G, T, T))
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
     assert cost == 1
 
 
 def test_align_positional_weight_matrix_reads_non_identical_sequence2():
     start_graph_node = initial_graph_of(
-        make_uncertain_regular(mix(A, C), mix(A, T), just(A))
+        make_uncertain_regular(mix(A, C, C, C), mix(A, T), just(A))
     ).start_nodes[0]
-    sequence = make_uncertain_regular(mix(A, C), mix(A, G), just(A))
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    sequence = make_uncertain_regular(mix(A, C, C, C), mix(A, G), just(A))
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
 
-    assert cost == 0.5 + 0.75
+    #assert [t.operation.name for t in trace] == False
+    assert cost == 0.5 + 0.75**2+0.25**2
     assert len(trace) == 3
     assert (
         trace[0].operation == DpOperation.MATCH
@@ -429,12 +437,12 @@ def test_align_positional_weight_matrix_reads_non_identical_sequence2():
 
 def test_align_positional_weight_matrix_reads_detached():
     start_graph_node = initial_graph_of(
-        make_uncertain_regular(just(A), just(T), mix(A, T))
+        make_uncertain_regular(just(A), mix(A,T,T,T,T), mix( T, G, G, G, G, G))
     ).start_nodes[0]
-    sequence = make_uncertain_regular(mix(A, G), just(C), mix(A, G))
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence)
+    sequence = make_uncertain_regular(mix(A, A, A, A, G), mix(A,T,T,T), mix(G, G, G, T))
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
 
-    assert cost == 0.5  + 1+ 0.75
+    #assert [t.operation.name for t in trace] == False
     assert len(trace) == 3
     assert (
         trace[0].operation == DpOperation.REPLACE
@@ -445,12 +453,12 @@ def test_align_positional_weight_matrix_reads_detached():
 
 def test_positional_weigth_matrix_add_to_graph():
     start_graph_node = initial_graph_of(
-        make_uncertain_regular(mix(A, C), mix(A, T), just(A))
+        make_uncertain_regular(mix(A, C, C, C), mix(A, A, A, T), just(A))
     ).start_nodes[0]
-    sequence = make_uncertain_regular(mix(A, C), mix(A, G), just(A))
+    sequence = make_uncertain_regular(mix(A, C,C, C), mix(A, A, A, G), just(A))
     add_to_graph_start_node(sequence, start_graph_node)
 
-    assert start_graph_node.base == PositionalWeightMatrixBase(mix(A, C))
+    assert start_graph_node.base == PositionalWeightMatrixBase(mix(A, C,C,C))
     assert len(start_graph_node.read_nodes) == 2
     assert len(start_graph_node.layer.graph_nodes) == 1
     assert len(start_graph_node.successors) == 2
@@ -464,14 +472,15 @@ def test_positional_weigth_matrix_add_to_graph():
 
 def test_align_positional_weight_matrix_reads_to_either_existing_path():
     p1 = make_uncertain_regular(just(C), just(A), just(T), mix(A, T))
-    p2 = make_uncertain_regular(just(C), mix(A, G), just(C), mix(A, G))
+    p2 = make_uncertain_regular(just(C), mix(A,A,A,A,A, G), just(T), mix(A, G,G,G,G,G))
     start_graph_node = initial_graph_of(p1).start_nodes[0]
     add_to_graph_start_node(p2, start_graph_node)
-    cost, trace = wiped_dp_memoized_function(start_graph_node, p1)
+    cost, trace = wiped_dp_memoized_function(start_graph_node, p1, True, True)
     assert cost == 0 + 0 + 0 + 0.5
 
-    cost, trace = wiped_dp_memoized_function(start_graph_node, p2)
-    assert cost == 0 + 0.5 + 0 + 0.5
+    cost, trace = wiped_dp_memoized_function(start_graph_node, p2, True, True)
+    #assert [t.operation.name for t in trace] == False
+    assert round(cost,6) == round(4/9,6)
 
 
 def test_consent_regular_base():
@@ -514,21 +523,21 @@ def test_consent_of_graph():
 def test_consent_positional_weight_matrix():
     assert consent_of_graph(
         multiple_sequence_alignment([
-            make_uncertain_regular(just(A), just(G), just(A)),
-            make_uncertain_regular(just(A), just(T), just(A)),
+            make_uncertain_regular(just(A),just(A),just(A), just(G),just(A),just(A), just(A)),
+            make_uncertain_regular(just(A),just(A),just(A), just(T),just(A),just(A), just(A)),
         ])
-    )==make_uncertain_regular(just(A), mix(T, G), just(A))
+    )==make_uncertain_regular(just(A),just(A),just(A), mix(T, G),just(A),just(A), just(A))
 
 
 def test_consent_positional_weight_matrix_delete():
     assert consent_of_graph(
         multiple_sequence_alignment([
-            make_uncertain_regular(just(A), just(T), just(A), just(C)),
-            make_uncertain_regular(just(A), just(T), just(A), just(C)),
-            make_uncertain_regular(just(A), just(A), just(C)),
+            make_uncertain_regular(just(A),just(A),just(A), just(T), just(A), just(C),just(A), just(A)),
+            make_uncertain_regular(just(A),just(A),just(A), just(T), just(A), just(C),just(A),just(A),),
+            make_uncertain_regular(just(A),just(A),just(A), just(A), just(C),just(A),just(A)),
 
         ])
-    )==make_uncertain_regular(just(A), just(T), just(A), just(C))
+    )==make_uncertain_regular(just(A),just(A),just(A), just(T), just(A), just(C),just(A),just(A),)
 
 
 
@@ -572,5 +581,32 @@ def test_consent_positional_weight_matrix_complex():
 def test_rigth_consent_from_overritten():
     PositionalWeightMatrixBase.consent(make_uncertain_regular(mix(A, C), just(A))) == PositionalWeightMatrixBase(mix(A,A, C))
 
+
+
+def test_consent_insert_all_end():
+    consent_of_graph(
+        multiple_sequence_alignment([
+            make_uncertain_regular(*just_those(A,C,A,G)),
+            make_uncertain_regular(*just_those(A,C,A,G,C)),
+        ])
+    ) == make_uncertain_regular(*just_those(A,C,A,G,C))
+
+
+def test_consent_delete_all_end():
+    consent_of_graph(
+        multiple_sequence_alignment([
+            make_uncertain_regular(*just_those(A,C,A,G,C)),
+            make_uncertain_regular(*just_those(A,C,A,G)),
+        ])
+    ) == make_uncertain_regular(*just_those(A,C,A,G,C))
+
+'''
+def test_alignment1():
+    s1 = make_uncertain_regular(*just_those(    G,C,C,G,C,C,C,A,G,A))
+    s2 = make_uncertain_regular(*just_those(G,T,G,T,C,G,G,C,C,A))
+
+    cost, trace = wiped_dp_memoized_function(initial_graph_of(s1).start_nodes[0], s2, True, True)
+    #assert [t.operation.name for t in trace] == False
+'''
 # todo: account for flexible start (not necessarily at the start of the graph)
 # todo: multiple starting points in general
