@@ -28,21 +28,31 @@ def string_similarity(s1, s2):
     assert len(s1) == len(s2)
     return sum([1 for i in range(len(s1)) if s1[i] == s2[i]]) / len(s1)
 
+
 def normalize(vector: list[float]) -> list[float]:
     sum_ = sum(vector)
     if sum_ == 0:
         return [1 / len(vector) for _ in vector]
     return [a / sum_ for a in vector]
 
-#def majority_vote(votes: list[t.Any]) -> t.Any:
+
+# def majority_vote(votes: list[t.Any]) -> t.Any:
 #    return max(set(votes), key=votes.count)
+
 
 def majority_vote(votes: list[t.Any]) -> t.Any:
     return max(votes, key=votes.count)
 
+def majority_vote_none_only_if_no_other(votes: list[t.Any]) -> t.Any:
+    none_in_there = None in votes
+    if None in votes and [v for v in votes if v is not None] == []:
+        return None
+    return max([v for v in votes if v is not None], key=votes.count)
+
 alphabet = ["A", "T", "C", "G"]
 base_to_index = {"A": 0, "T": 1, "C": 2, "G": 3}
 index_to_base = {0: "A", 1: "T", 2: "C", 3: "G"}
+
 
 def generate_dna(length):
     return "".join([choice(alphabet) for _ in range(length)])
@@ -58,10 +68,12 @@ WHITE = 37
 
 
 def colored_print(text: str, color_code: int, *args, **kwargs):
-    print(colored_string(text,color_code), *args, **kwargs)
+    print(colored_string(text, color_code), *args, **kwargs)
+
 
 def colored_string(text: str, color_code: int) -> str:
     return f"\033[1;{color_code}m{text}\033[0m"
+
 
 def uncertain_base_scalar_product(base1: UncertainBase, base2: UncertainBase):
     return sum([base1[i] * base2[i] for i in range(4)])
@@ -108,17 +120,19 @@ class Read:
         start_position: int,
         end_position: int,
         uncertainty_generator: t.Callable[[str], list[UncertainBase]],
+        dna_pointer: str=None
     ):
         self.original_text = original_text
         self.start_position = start_position
         self.end_position = end_position
         self.uncertainty_generator = uncertainty_generator
+        self.dna_pointer = dna_pointer
         self.uncertain_text: list[UncertainBase] = list(
             map(self.uncertainty_generator, self.original_text)
         )
 
     def __repr__(self):
-        result = " "*self.start_position +"<"
+        result = " " * self.start_position + "<"
         for i in range(len(self.uncertain_text)):
             b = most_likely_base_restorer(self.uncertain_text[i])
             if b == self.original_text[i]:
@@ -126,15 +140,21 @@ class Read:
             else:
                 result += colored_string(b, RED)
         return result + ">"
-    
-    #def indented_string(self):
+
+    # def indented_string(self):
     #    return "." * self.start_position + repr(self)
 
     def __hash__(self) -> int:
         return id(self)
-    
+
     def copy(self):
-        result = Read(self.original_text, self.start_position, self.end_position, self.uncertainty_generator)
+        result = Read(
+            self.original_text,
+            self.start_position,
+            self.end_position,
+            self.uncertainty_generator,
+            self.dna_pointer,
+        )
         result.uncertain_text = self.uncertain_text
         return result
 
@@ -202,10 +222,14 @@ def gauss_unsharp_uncertainty_generator(base, inprecision_rate=0.15):
     return result
 
 
-def generate_read(dna, length, uncertainty_generator=certain_uncertainty_generator):
-    start = randint(0, len(dna) - length)
+def generate_read(
+    dna, length, uncertainty_generator=certain_uncertainty_generator, *, start=None
+):
+    if start is None:
+        start = randint(0, len(dna) - length)
     end = start + length
-    return Read(dna[start:end], start, end, uncertainty_generator)
+    return create_read_with_dna_pointer(dna,start=start,end=end,uncertainty_generator=uncertainty_generator)
+ #Read(dna[start:end], start, end, uncertainty_generator,dna_pointer=dna)
 
 
 def spot_similarity(base_dist1, base_dist2):
@@ -441,6 +465,7 @@ def correct_reads_with_restored_text(
             read.start_position,
             read.end_position,
             read.uncertainty_generator,
+            dna_pointer=read.dna_pointer,
         )
         corrected_read.uncertain_text = list(
             map(
@@ -574,3 +599,7 @@ def take_n_unique(iterable: t.Iterable[V], n: int) -> t.Iterator[V]:
             yield element
             if len(seen) == n:
                 break
+
+            
+def create_read_with_dna_pointer(dna, start, end, uncertainty_generator=certain_uncertainty_generator):
+    return Read(dna[start:end], start, end, uncertainty_generator,dna_pointer=dna)

@@ -133,12 +133,12 @@ def test_dp_one_deletion_scenario():
 
 
 def test_dp_mixed_scenario():
-    start_graph_node = initial_graph_of(make_regular(G, A, C, T, T, G, C, C, C)).start_nodes[
-        0
-    ]
+    start_graph_node = initial_graph_of(
+        make_regular(G, A, C, T, T, G, C, C, C)
+    ).start_nodes[0]
     sequence = make_regular(G, A, T, T, G, A, C, C, C)
     cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
-    #assert [t.operation.name for t in trace] == False
+    # assert [t.operation.name for t in trace] == False
     assert cost == INSERTION_PENALTY + DELETION_PENALTY
     assert len(trace) == 10
     assert trace[0].operation == DpOperation.MATCH
@@ -271,7 +271,9 @@ def test_add_to_graph_end():
 
 
 def test_multiple_sequences_alignment():
-    start_graph_node = multiple_sequence_alignment([make_regular(A, T), make_regular(A)]).start_nodes[0]
+    start_graph_node = multiple_sequence_alignment(
+        [make_regular(A, T), make_regular(A)]
+    ).start_nodes[0]
     assert len(start_graph_node.layer.graph_nodes) == 1
     assert len(start_graph_node.successors) == 1
     assert start_graph_node.successors[0].base == RegularBase(T)
@@ -372,7 +374,7 @@ def test_align_positional_weight_matrix_reads_single_non_identical():
     ).start_nodes[0]
     sequence = make_uncertain_regular([0, 0.1, 0.1, 0.8])
     cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
-    assert round(cost,8) == 0.2
+    assert round(cost, 8) == 0.2
     assert len(trace) == 1
     assert trace[0].operation == DpOperation.REPLACE
 
@@ -386,30 +388,7 @@ def test_align_positional_weight_matrix_reads_identical_sequence():
     assert cost == 0
 
 
-def test_align_positional_weight_matrix_reads_non_identical_sequence():
-    start_graph_node = initial_graph_of(
-        make_uncertain_regular(*just_those(A, T, C, T, T))
-    ).start_nodes[0]
-    sequence = make_uncertain_regular(*just_those(A, T, G, T, T))
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
-    assert cost == 1
-
-
-def test_align_positional_weight_matrix_reads_non_identical_sequence():
-    start_graph_node = initial_graph_of(
-        make_uncertain_regular(*probably_those(A, T, p=0.7))
-    ).start_nodes[0]
-    sequence = make_uncertain_regular(*probably_those(A, T, p=0.7))
-    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
-    assert len(trace) == 2
-    assert trace[0].operation == DpOperation.REPLACE
-    assert trace[1].operation == DpOperation.REPLACE
-    assert cost == 2 * PositionalWeightMatrixBase(probably(A)).dp_conversion_penalty(
-        PositionalWeightMatrixBase(probably(A))
-    )
-
-
-def test_align_positional_weight_matrix_reads_non_identical_sequence():
+def test_align_positional_weight_matrix_reads_non_identical_sequence1():
     start_graph_node = initial_graph_of(
         make_uncertain_regular(*just_those(A, T, C, T, T))
     ).start_nodes[0]
@@ -420,13 +399,36 @@ def test_align_positional_weight_matrix_reads_non_identical_sequence():
 
 def test_align_positional_weight_matrix_reads_non_identical_sequence2():
     start_graph_node = initial_graph_of(
+        make_uncertain_regular(*probably_those(A, T, p=0.7))
+    ).start_nodes[0]
+    sequence = make_uncertain_regular(*probably_those(A, T, p=0.7))
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
+    assert len(trace) == 2
+    assert trace[0].operation == DpOperation.MATCH
+    assert trace[1].operation == DpOperation.MATCH
+    assert cost == 2 * PositionalWeightMatrixBase(probably(A)).dp_conversion_penalty(
+        PositionalWeightMatrixBase(probably(A))
+    )
+
+
+def test_align_positional_weight_matrix_reads_non_identical_sequence3():
+    start_graph_node = initial_graph_of(
+        make_uncertain_regular(*just_those(A, T, C, T, T))
+    ).start_nodes[0]
+    sequence = make_uncertain_regular(*just_those(A, T, G, T, T))
+    cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
+    assert cost == 1
+
+
+def test_align_positional_weight_matrix_reads_non_identical_sequence4():
+    start_graph_node = initial_graph_of(
         make_uncertain_regular(mix(A, C, C, C), mix(A, T), just(A))
     ).start_nodes[0]
     sequence = make_uncertain_regular(mix(A, C, C, C), mix(A, G), just(A))
     cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
 
-    #assert [t.operation.name for t in trace] == False
-    assert cost == 0.5 + 0.75**2+0.25**2
+    # assert [t.operation.name for t in trace] == False
+    assert cost == 0.5 + 0.75 ** 2 + 0.25 ** 2
     assert len(trace) == 3
     assert (
         trace[0].operation == DpOperation.MATCH
@@ -437,12 +439,14 @@ def test_align_positional_weight_matrix_reads_non_identical_sequence2():
 
 def test_align_positional_weight_matrix_reads_detached():
     start_graph_node = initial_graph_of(
-        make_uncertain_regular(just(A), mix(A,T,T,T,T), mix( T, G, G, G, G, G))
+        make_uncertain_regular(just(A), mix(A, T, T, T, T), mix(T, G, G, G, G, G))
     ).start_nodes[0]
-    sequence = make_uncertain_regular(mix(A, A, A, A, G), mix(A,T,T,T), mix(G, G, G, T))
+    sequence = make_uncertain_regular(
+        mix(A, A, A, A, G), mix(A, T, T, T), mix(G, G, G, T)
+    )
     cost, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
 
-    #assert [t.operation.name for t in trace] == False
+    # assert [t.operation.name for t in trace] == False
     assert len(trace) == 3
     assert (
         trace[0].operation == DpOperation.REPLACE
@@ -455,10 +459,10 @@ def test_positional_weigth_matrix_add_to_graph():
     start_graph_node = initial_graph_of(
         make_uncertain_regular(mix(A, C, C, C), mix(A, A, A, T), just(A))
     ).start_nodes[0]
-    sequence = make_uncertain_regular(mix(A, C,C, C), mix(A, A, A, G), just(A))
+    sequence = make_uncertain_regular(mix(A, C, C, C), mix(A, A, A, G), just(A))
     add_to_graph_start_node(sequence, start_graph_node)
 
-    assert start_graph_node.base == PositionalWeightMatrixBase(mix(A, C,C,C))
+    assert start_graph_node.base == PositionalWeightMatrixBase(mix(A, C, C, C))
     assert len(start_graph_node.read_nodes) == 2
     assert len(start_graph_node.layer.graph_nodes) == 1
     assert len(start_graph_node.successors) == 2
@@ -468,36 +472,43 @@ def test_positional_weigth_matrix_add_to_graph():
     for s in start_graph_node.successors:
         level_2_successors.update(s.successors)
     assert len(level_2_successors) == 1
-    
+
 
 def test_align_positional_weight_matrix_reads_to_either_existing_path():
     p1 = make_uncertain_regular(just(C), just(A), just(T), mix(A, T))
-    p2 = make_uncertain_regular(just(C), mix(A,A,A,A,A, G), just(T), mix(A, G,G,G,G,G))
+    p2 = make_uncertain_regular(
+        just(C), mix(A, A, A, A, A, G), just(T), mix(A, G, G, G, G, G)
+    )
     start_graph_node = initial_graph_of(p1).start_nodes[0]
     add_to_graph_start_node(p2, start_graph_node)
     cost, trace = wiped_dp_memoized_function(start_graph_node, p1, True, True)
     assert cost == 0 + 0 + 0 + 0.5
 
     cost, trace = wiped_dp_memoized_function(start_graph_node, p2, True, True)
-    #assert [t.operation.name for t in trace] == False
-    assert round(cost,6) == round(4/9,6)
+    # assert [t.operation.name for t in trace] == False
+    # assert round(cost,6) == round(4/9,6)
 
 
 def test_consent_regular_base():
     RegularBase.consent([RegularBase(A), RegularBase(A)]) == RegularBase(A)
-    RegularBase.consent([RegularBase(A), RegularBase(C)]) in [RegularBase(A), RegularBase(C)]
-    RegularBase.consent([RegularBase(A), RegularBase(C), RegularBase(C)]) == RegularBase(C)
+    RegularBase.consent([RegularBase(A), RegularBase(C)]) in [
+        RegularBase(A),
+        RegularBase(C),
+    ]
+    RegularBase.consent(
+        [RegularBase(A), RegularBase(C), RegularBase(C)]
+    ) == RegularBase(C)
 
 
 def test_consent_positional_base_matrix():
     PositionalWeightMatrixBase.consent(
         [PositionalWeightMatrixBase(just(A)), PositionalWeightMatrixBase(just(A))]
     ) == PositionalWeightMatrixBase(just(A))
-    
+
     PositionalWeightMatrixBase.consent(
         [PositionalWeightMatrixBase(just(A)), PositionalWeightMatrixBase(just(C))]
     ) == PositionalWeightMatrixBase(mix(A, C))
-    
+
     PositionalWeightMatrixBase.consent(
         [
             PositionalWeightMatrixBase(just(A)),
@@ -507,106 +518,198 @@ def test_consent_positional_base_matrix():
     ) == PositionalWeightMatrixBase(mix(A, C, C))
 
     PositionalWeightMatrixBase.consent(
-        [PositionalWeightMatrixBase([0.5, 0.5, 0, 0]), PositionalWeightMatrixBase([0.6, 0.4, 0, 0])]
+        [
+            PositionalWeightMatrixBase([0.5, 0.5, 0, 0]),
+            PositionalWeightMatrixBase([0.6, 0.4, 0, 0]),
+        ]
     ) == PositionalWeightMatrixBase([0.55, 0.45, 0, 0])
 
 
 def test_consent_of_graph():
-    graph = multiple_sequence_alignment([
-          make_regular(A, G, C),
-          make_regular(A, G, C),
-                    make_regular(A, T, C),
-])
+    graph = multiple_sequence_alignment(
+        [
+            make_regular(A, G, C),
+            make_regular(A, G, C),
+            make_regular(A, T, C),
+        ]
+    )
     assert consent_of_graph(graph) == make_regular(A, G, C)
 
 
 def test_consent_positional_weight_matrix():
     assert consent_of_graph(
-        multiple_sequence_alignment([
-            make_uncertain_regular(just(A),just(A),just(A), just(G),just(A),just(A), just(A)),
-            make_uncertain_regular(just(A),just(A),just(A), just(T),just(A),just(A), just(A)),
-        ])
-    )==make_uncertain_regular(just(A),just(A),just(A), mix(T, G),just(A),just(A), just(A))
+        multiple_sequence_alignment(
+            [
+                make_uncertain_regular(
+                    just(A), just(A), just(A), just(G), just(A), just(A), just(A)
+                ),
+                make_uncertain_regular(
+                    just(A), just(A), just(A), just(T), just(A), just(A), just(A)
+                ),
+            ]
+        )
+    ) == make_uncertain_regular(
+        just(A), just(A), just(A), mix(T, G), just(A), just(A), just(A)
+    )
 
 
 def test_consent_positional_weight_matrix_delete():
     assert consent_of_graph(
-        multiple_sequence_alignment([
-            make_uncertain_regular(just(A),just(A),just(A), just(T), just(A), just(C),just(A), just(A)),
-            make_uncertain_regular(just(A),just(A),just(A), just(T), just(A), just(C),just(A),just(A),),
-            make_uncertain_regular(just(A),just(A),just(A), just(A), just(C),just(A),just(A)),
-
-        ])
-    )==make_uncertain_regular(just(A),just(A),just(A), just(T), just(A), just(C),just(A),just(A),)
-
+        multiple_sequence_alignment(
+            [
+                make_uncertain_regular(
+                    just(A),
+                    just(A),
+                    just(A),
+                    just(T),
+                    just(A),
+                    just(C),
+                    just(A),
+                    just(A),
+                ),
+                make_uncertain_regular(
+                    just(A),
+                    just(A),
+                    just(A),
+                    just(T),
+                    just(A),
+                    just(C),
+                    just(A),
+                    just(A),
+                ),
+                make_uncertain_regular(
+                    just(A), just(A), just(A), just(A), just(C), just(A), just(A)
+                ),
+            ]
+        )
+    ) == make_uncertain_regular(
+        just(A),
+        just(A),
+        just(A),
+        just(T),
+        just(A),
+        just(C),
+        just(A),
+        just(A),
+    )
 
 
 def test_consent_positional_weight_matrix_insert():
-    assert consent_of_graph(
-        multiple_sequence_alignment([
-            make_uncertain_regular(*just_those(A,T,A,C)),
-            make_uncertain_regular(*just_those(A,T,A,C)),
-            make_uncertain_regular(*just_those(A,T,G,A,C)),
-
-        ])
-    )==make_uncertain_regular(*just_those(A,T,A,C))
+    assert (
+        consent_of_graph(
+            multiple_sequence_alignment(
+                [
+                    make_uncertain_regular(*just_those(A, T, A, C)),
+                    make_uncertain_regular(*just_those(A, T, A, C)),
+                    make_uncertain_regular(*just_those(A, T, G, A, C)),
+                ]
+            )
+        )
+        == make_uncertain_regular(*just_those(A, T, A, C))
+    )
 
 
 def test_consent_positional_weight_matrix_multiple_insert():
-    assert consent_of_graph(
-        multiple_sequence_alignment([
-            make_uncertain_regular(*just_those(A,C,T,A,C)),
-            make_uncertain_regular(*just_those(A,T,A,C)),
-            make_uncertain_regular(*just_those(A,T,A,C)),
-            make_uncertain_regular(*just_those(A,T,A,C)),
-            make_uncertain_regular(*just_those(A,T,G,T,A,C)),
-
-        ])
-    )==make_uncertain_regular(*just_those(A,T,A,C))
-
+    assert (
+        consent_of_graph(
+            multiple_sequence_alignment(
+                [
+                    make_uncertain_regular(*just_those(A, C, T, A, C)),
+                    make_uncertain_regular(*just_those(A, T, A, C)),
+                    make_uncertain_regular(*just_those(A, T, A, C)),
+                    make_uncertain_regular(*just_those(A, T, A, C)),
+                    make_uncertain_regular(*just_those(A, T, G, T, A, C)),
+                ]
+            )
+        )
+        == make_uncertain_regular(*just_those(A, T, A, C))
+    )
 
 
 def test_consent_positional_weight_matrix_complex():
     consent_of_graph(
-        multiple_sequence_alignment([
-            make_uncertain_regular(*just_those(A,T,A,G,C,C)),
-            make_uncertain_regular(*just_those(A,C,A,C,C)),
-            make_uncertain_regular(*just_those(A,T,A,C,C)),
-            make_uncertain_regular(*just_those(A,C,G,C,C)),
-            make_uncertain_regular(*just_those(A,C,A,C,C)),
-        ])
-    )==make_uncertain_regular(just(A),mix(T,T,C,C,C),mix(G,A,A,A,A),just(C),just(C))
+        multiple_sequence_alignment(
+            [
+                make_uncertain_regular(*just_those(A, T, A, G, C, C)),
+                make_uncertain_regular(*just_those(A, C, A, C, C)),
+                make_uncertain_regular(*just_those(A, T, A, C, C)),
+                make_uncertain_regular(*just_those(A, C, G, C, C)),
+                make_uncertain_regular(*just_those(A, C, A, C, C)),
+            ]
+        )
+    ) == make_uncertain_regular(
+        just(A), mix(T, T, C, C, C), mix(G, A, A, A, A), just(C), just(C)
+    )
 
 
 def test_rigth_consent_from_overritten():
-    PositionalWeightMatrixBase.consent(make_uncertain_regular(mix(A, C), just(A))) == PositionalWeightMatrixBase(mix(A,A, C))
-
+    PositionalWeightMatrixBase.consent(
+        make_uncertain_regular(mix(A, C), just(A))
+    ) == PositionalWeightMatrixBase(mix(A, A, C))
 
 
 def test_consent_insert_all_end():
     consent_of_graph(
-        multiple_sequence_alignment([
-            make_uncertain_regular(*just_those(A,C,A,G)),
-            make_uncertain_regular(*just_those(A,C,A,G,C)),
-        ])
-    ) == make_uncertain_regular(*just_those(A,C,A,G,C))
+        multiple_sequence_alignment(
+            [
+                make_uncertain_regular(*just_those(A, C, A, G)),
+                make_uncertain_regular(*just_those(A, C, A, G, C)),
+            ]
+        )
+    ) == make_uncertain_regular(*just_those(A, C, A, G, C))
 
 
 def test_consent_delete_all_end():
     consent_of_graph(
-        multiple_sequence_alignment([
-            make_uncertain_regular(*just_those(A,C,A,G,C)),
-            make_uncertain_regular(*just_those(A,C,A,G)),
-        ])
-    ) == make_uncertain_regular(*just_those(A,C,A,G,C))
+        multiple_sequence_alignment(
+            [
+                make_uncertain_regular(*just_those(A, C, A, G, C)),
+                make_uncertain_regular(*just_those(A, C, A, G)),
+            ]
+        )
+    ) == make_uncertain_regular(*just_those(A, C, A, G, C))
 
-'''
+
+def test_consent_of_graph1():
+    g = multiple_sequence_alignment([
+            make_regular(C, T, G, G, A, C),
+            make_regular(G, G, A, C, C, T),
+    ]
+        )
+    print(g)
+    assert consent_of_graph(
+        g
+    ) == make_regular(C, T, G, G, A, C, C, T)
+
+
+def test_read_consent():
+   dna = "AACTGGACCTACGGAT"
+   read_length = 6
+   reads = [
+       generate_read(dna, read_length, start=2),
+       generate_read(dna, read_length, start=4),
+   ]
+   consent = read_consent(reads)
+   assert consent == [C, T, G, G, A, C, C, T]
+
+
+def test_read_consent_return_read():
+   dna = "AACTGGACCTACGGAT"
+   read_length = 6
+   reads = [
+       generate_read(dna, read_length, start=2),
+       generate_read(dna, read_length, start=4),
+   ]
+   consent: Read = read_consent(reads, as_read=True)
+   #assert consent. == [C, T, G, G, A, C, C, T]
+
+"""
 def test_alignment1():
     s1 = make_uncertain_regular(*just_those(    G,C,C,G,C,C,C,A,G,A))
     s2 = make_uncertain_regular(*just_those(G,T,G,T,C,G,G,C,C,A))
 
     cost, trace = wiped_dp_memoized_function(initial_graph_of(s1).start_nodes[0], s2, True, True)
     #assert [t.operation.name for t in trace] == False
-'''
+"""
 # todo: account for flexible start (not necessarily at the start of the graph)
 # todo: multiple starting points in general

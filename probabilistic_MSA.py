@@ -48,7 +48,7 @@ def dp_with_probabilities(
             else:
                 backtrace[i][j] = SUBSTITUTION
 
-    #print(backtrace)
+    # print(backtrace)
     # print the changes with colors
     queue = []
     i = len(sequence2)
