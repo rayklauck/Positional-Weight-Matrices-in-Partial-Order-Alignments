@@ -15,6 +15,8 @@ T = "T"
 C = "C"
 G = "G"
 
+U = "U" # UNKOWN
+
 
 def chance(p):
     return random() <= p

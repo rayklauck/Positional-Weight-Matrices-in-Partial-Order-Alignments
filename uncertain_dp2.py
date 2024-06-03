@@ -522,22 +522,25 @@ def read_consent(reads: list[Read], as_read=False, probabilistic=False):
     consent = [c.base for c in consent]
     if not as_read:
         return consent
-    raise NotImplementedError("Not implemented yet")
-    # TODO: may go outsidethe read dna if something was misaligned
-    # try:
-        # result = create_read_with_dna_pointer(
-            # reads[0].dna_pointer, reads[0].start_position, reads[0].start_position + len(consent))
-    # except IndexError:
-        # result = 
-# 
-    # if probabilistic:
-        # result.uncertain_text = consent
-    # else:
-        # result.uncertain_text = list(map(certain_uncertainty_generator, consent))[
-            # : len(result.original_text)
-        # ]  # TODO: always correct?
-    # return result
-# 
+    #raise NotImplementedError("Not implemented yet")
+    #TODO: may go outsidethe read dna if something was misaligned
+
+    start = reads[0].start_position
+    end = start + len(consent)
+    try:
+        result = create_read_with_dna_pointer(
+            reads[0].dna_pointer, start, end)
+    except IndexError:
+        result = Read(U*len(consent), start, end)
+
+    if probabilistic:
+        result.uncertain_text = consent
+    else:
+        result.uncertain_text = list(map(certain_uncertainty_generator, consent))[
+            : len(result.original_text)
+        ]  # TODO: always correct?
+    return result
+
 
 def correct_reads_with_consens(reads: list[Read], probabilistic=False):
     results = []
