@@ -40,3 +40,7 @@ def test_most_likely_pot_string():
         Read("TCGAGG", 5, 11, certain_uncertainty_generator): 5,
     }
     assert most_likely_pot_string(get_in_pot_alignment) == ("AATCGAGG", 3)
+
+
+def test_uncertain_text():
+        Read("AATCGA", 3, 9, certain_uncertainty_generator).predicted_text == "AATCGA"

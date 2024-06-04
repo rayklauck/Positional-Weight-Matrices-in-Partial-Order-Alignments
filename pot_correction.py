@@ -133,7 +133,14 @@ class Read:
             map(self.uncertainty_generator, self.original_text)
         )
 
+    @property
+    def predicted_text(self):
+        '''What the uncertain text suggests the bases are'''
+        return most_likely_restorer(self.uncertain_text)
+
     def __repr__(self):
+        #print(self.start_position, len(self.uncertain_text), len(self.original_text))
+        #try:
         result = " " * self.start_position + "<"
         for i in range(len(self.uncertain_text)):
             b = most_likely_base_restorer(self.uncertain_text[i])
@@ -142,6 +149,8 @@ class Read:
             else:
                 result += colored_string(b, RED)
         return result + ">"
+        #except:
+        #    return "<unformattable-read>"
 
     # def indented_string(self):
     #    return "." * self.start_position + repr(self)

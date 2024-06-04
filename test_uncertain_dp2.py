@@ -703,6 +703,10 @@ def test_read_consent_return_read():
    consent: Read = read_consent(reads, as_read=True)
    #assert consent. == [C, T, G, G, A, C, C, T]
 
+
+def test_edit_distance():
+    assert edit_distance(make_regular(A, A, A, C, A, A, A), make_regular(A, A, A, T, A, A, A)) == RegularBase.dp_conversion_penalty(RegularBase(C), RegularBase(T))
+
 """
 def test_alignment1():
     s1 = make_uncertain_regular(*just_those(    G,C,C,G,C,C,C,A,G,A))

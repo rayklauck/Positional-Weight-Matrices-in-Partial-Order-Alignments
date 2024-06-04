@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 
 DELETION_PENALTY = 1
 INSERTION_PENALTY = 1
-ALIGNMENT_BONUS = 0.9  # adjust based on the consideration: how many aligned bases is one unaligned worth?
+ALIGNMENT_BONUS = 0.7  # adjust based on the consideration: how many aligned bases is one unaligned worth?
 
 
 class BaseLike(ABC):
@@ -493,7 +493,7 @@ def multiple_sequence_alignment(sequences: list[list[BaseLike]]) -> Graph:
 
 
 def read_consent(reads: list[Read], as_read=False, probabilistic=False):
-    print("reads: ", reads)
+    #print("reads: ", reads)
     if probabilistic:
         base_like_reads = list(
             map(
@@ -513,12 +513,11 @@ def read_consent(reads: list[Read], as_read=False, probabilistic=False):
             )
         )
 
-    print("breads: ", base_like_reads)
+    #print("breads: ", base_like_reads)
     graph = multiple_sequence_alignment(base_like_reads)
-    print("gr: ", graph)
 
     consent = consent_of_graph(graph)
-    print("consent: ", consent)
+    #print("consent: ", consent)
     consent = [c.base for c in consent]
     if not as_read:
         return consent
@@ -531,13 +530,15 @@ def read_consent(reads: list[Read], as_read=False, probabilistic=False):
         result = create_read_with_dna_pointer(
             reads[0].dna_pointer, start, end)
     except IndexError:
-        result = Read(U*len(consent), start, end)
+        result = Read(C*len(consent), start, end)  # good idea to fill with Cs ?
 
     if probabilistic:
-        result.uncertain_text = consent
+        result.uncertain_text = consent[
+            : len(reads[0].original_text)
+        ] 
     else:
         result.uncertain_text = list(map(certain_uncertainty_generator, consent))[
-            : len(result.original_text)
+            : len(reads[0].original_text)
         ]  # TODO: always correct?
     return result
 
@@ -553,6 +554,12 @@ def correct_reads_with_consens(reads: list[Read], probabilistic=False):
     return results
 
 
+def edit_distance(s1:list[BaseLike], s2:list[BaseLike]):
+    start_graph_node = initial_graph_of(s1).start_nodes[0]
+    cost, trace = wiped_dp_memoized_function(start_graph_node, s2, True, True)
+    return cost
+
+
 def tes_dp_same():
     g = multiple_sequence_alignment([
             make_regular(C, T, G, G, A, C),
@@ -564,6 +571,30 @@ def tes_dp_same():
         g
     ) == make_regular(C, T, G, G, A, C, C, T)
 
+
+def dna_distance_error_rate(dna:str, reads: list[Read]):
+    individual_error_rates = []
+    total_distance = 0
+    total_length = 0
+    for read in reads:
+        cost = edit_distance(make_regular(*dna),make_regular(*read.predicted_text))
+        length = len(read.original_text)
+        individual_error_rates.append(cost/length)
+        total_distance += cost
+        total_length += length
+    print(individual_error_rates)
+    return total_distance / total_length
+
+
+def percent_similarity_func(value1, value2, *, percent=0.2):
+    return value1/value2 <= 1+percent and value2/value1 <= 1+percent
+
+def check_dna_distance_error_rate_suitable(dna:str, reads: list[Read], similarity_criterium=percent_similarity_func):
+    real_result = most_likely_restorer_error_rate(reads)
+    arbitrary_alignment_result = dna_distance_error_rate(dna, reads)
+    if not similarity_criterium(real_result, arbitrary_alignment_result):
+        raise ValueError("Assumption broken: Allowing reads to align arbitrarely significantly reduces perceived error rate. In this case,"+
+                         f"arbitrary alignment ({arbitrary_alignment_result}) and actual read origin alignment scores ({real_result}) cannot be used interchangeably.")
 
 if __name__ == "__main__":
     tes_dp_same()
