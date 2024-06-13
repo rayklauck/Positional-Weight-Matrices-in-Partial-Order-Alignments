@@ -132,6 +132,7 @@ class Read:
         self.uncertain_text: list[UncertainBase] = list(
             map(self.uncertainty_generator, self.original_text)
         )
+        self.read_node_pointer: "ReadNode" = None
 
     @property
     def predicted_text(self):

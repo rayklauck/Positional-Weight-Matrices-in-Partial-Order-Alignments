@@ -1,3 +1,4 @@
+from dataclasses import field
 from enum import Enum
 from functools import cache
 from pot_correction import *
@@ -5,7 +6,7 @@ from abc import ABC, abstractmethod
 
 DELETION_PENALTY = 1
 INSERTION_PENALTY = 1
-ALIGNMENT_BONUS = 0.7  # adjust based on the consideration: how many aligned bases is one unaligned worth?
+#ALIGNMENT_BONUS = 2 # 0.7  # adjust based on the consideration: how many aligned bases is one unaligned worth?
 
 
 class BaseLike(ABC):
@@ -72,6 +73,7 @@ class AssoziatedLayer:
 
     def __init__(self):
         self.graph_nodes: list[GraphNode] = []
+        self.graph: Graph = None
 
     def add(self, graph_node: GraphNode):
         self.graph_nodes.append(graph_node)
@@ -81,6 +83,7 @@ class AssoziatedLayer:
 @dataclass
 class Graph:
     start_nodes: list[GraphNode]
+    reads: list[ReadNode] = field(default_factory=list)
 
 
 class RegularBase(BaseLike):
@@ -173,15 +176,15 @@ class DpOption:
     cost: float
     trace: list["TracePoint"]
 
-    def matching_adjusted_cost(self):
-        alignment_bonus = 0
+    def matching_adjusted_cost(self, alignment_bonus):
+        total_alignment_bonus = 0
         for trace_point in self.trace:
             if trace_point.operation == DpOperation.MATCH:
-                alignment_bonus += ALIGNMENT_BONUS
+                total_alignment_bonus += alignment_bonus
             elif trace_point.operation == DpOperation.REPLACE:
-                alignment_bonus += ALIGNMENT_BONUS * (1 - trace_point.replacement_cost)
+                total_alignment_bonus += alignment_bonus * (1 - trace_point.replacement_cost)
 
-        return self.cost - alignment_bonus
+        return self.cost - total_alignment_bonus
 
 
 @dataclass
@@ -193,26 +196,28 @@ class TracePoint:
 
 
 def carefully_chached(
-    func: t.Callable[[GraphNode, int, bool, bool], tuple[float, list[TracePoint]]]
+    func: t.Callable[[GraphNode, int, bool, bool, float], DpOption]
 ):
-    cache: dict[tuple[GraphNode, int, bool, bool], tuple[float, list[TracePoint]]] = {}
+    cache: dict[tuple[GraphNode, int, bool, bool, float], DpOption] = {}
 
     def wrapper(
         graph_position: GraphNode | None,
         sequence_still_to_align: list[BaseLike],
         at_graph_start: bool,
         at_sequence_start: bool,
+        alignment_bonus: float,
     ):
         fingerprint = (
             graph_position,
             len(sequence_still_to_align),
             at_graph_start,
             at_sequence_start,
+            alignment_bonus
         )
         if fingerprint in cache:
             return cache[fingerprint]
         result = func(
-            graph_position, sequence_still_to_align, at_graph_start, at_sequence_start
+            graph_position, sequence_still_to_align, at_graph_start, at_sequence_start, alignment_bonus
         )
         cache[fingerprint] = result
         return result
@@ -229,7 +234,8 @@ def dp_memoized_function(
     sequence_still_to_align: list[BaseLike],
     at_graph_start: bool,
     at_sequence_start: bool,
-) -> tuple[float, list[TracePoint]]:
+    alignment_bonus: float,
+) -> DpOption:
     """
     returns:
         - minimum cost, way through the graph
@@ -237,22 +243,23 @@ def dp_memoized_function(
     # Base cases
     if sequence_still_to_align == []:
         # choose end statement
-        return (
+        return (DpOption(
             0,
             [TracePoint(DpOperation.INSERT_ALL_END, graph_position)]
             if graph_position is not None
             else [],
+            )
         )
 
     if graph_position is None:
         # choose end statement
-        return 0, [
+        return DpOption(0, [
             TracePoint(
                 DpOperation.DELETE_ALL_END,
                 graph_position,
                 end_cut_out_sequence=sequence_still_to_align,
             )
-        ]
+        ])
 
     successors = (
         graph_position.successors if graph_position.successors != [] else [None]
@@ -264,12 +271,14 @@ def dp_memoized_function(
     # for all graph-successors
     for next_graph_position in successors:
         # delete from sequence
-        sub_cost, trace = dp_memoized_function(
+        sub_option = dp_memoized_function(
             graph_position,
             sequence_still_to_align[1:],
             at_graph_start=at_graph_start,
             at_sequence_start=False,
+            alignment_bonus=alignment_bonus
         )
+        sub_cost, trace = sub_option.cost, sub_option.trace
         if at_graph_start:
             # if at graph_start, we can delete for free (meaning a flexible starting position)
             trace = [
@@ -293,12 +302,14 @@ def dp_memoized_function(
             )
 
         # insert into sequence
-        sub_cost, trace = dp_memoized_function(
+        sub_option = dp_memoized_function(
             next_graph_position,
             sequence_still_to_align,
             at_graph_start=False,
             at_sequence_start=at_sequence_start,
+            alignment_bonus=alignment_bonus
         )
+        sub_cost, trace = sub_option.cost, sub_option.trace
 
         if at_sequence_start:
             # if at sequence start, we can insert for free (meaning a flexible starting position)
@@ -322,12 +333,14 @@ def dp_memoized_function(
             )
 
         # replace in sequence
-        sub_cost, trace = dp_memoized_function(
+        sub_option = dp_memoized_function(
             next_graph_position,
             sequence_still_to_align[1:],
             at_graph_start=False,
             at_sequence_start=False,
+            alignment_bonus=alignment_bonus
         )
+        sub_cost, trace = sub_option.cost, sub_option.trace
 
         cost_here = graph_position.base.dp_conversion_penalty(
             sequence_still_to_align[0]
@@ -354,8 +367,8 @@ def dp_memoized_function(
 
     # return min of all possibilities
     # give advantage to longer actually aligned sequences
-    best_option = min(options, key=lambda x: x.matching_adjusted_cost())
-    return best_option.cost, best_option.trace
+    return min(options, key=lambda x: x.matching_adjusted_cost(alignment_bonus))
+    
 
 
 dp_memoized_function, wiper = carefully_chached(dp_memoized_function)
@@ -366,22 +379,28 @@ def wiped_dp_memoized_function(
     sequence_still_to_align: list[BaseLike],
     at_graph_start: bool,
     at_sequence_start: bool,
-) -> tuple[float, list[TracePoint]]:
+    alignment_bonus: float
+) -> DpOption:
     wiper()
     return dp_memoized_function(
-        graph_position, sequence_still_to_align, at_graph_start, at_sequence_start
+        graph_position, sequence_still_to_align, at_graph_start, at_sequence_start, alignment_bonus=alignment_bonus
     )
 
 
 def initial_graph_of(sequence: list[BaseLike]) -> Graph:
+    read_node = create_read_node_chain(sequence)
+    return initial_graph_of_read_node(read_node)
+
+
+def initial_graph_of_read_node(read_node: ReadNode) -> Graph:
     """Creates initial graph from sequence"""
-    read_node_chain = create_read_node_chain(sequence)
     graph = Graph([])
     graph_nodes = []
 
-    current_read_node = read_node_chain
+    current_read_node = read_node
     while current_read_node is not None:
         layer = AssoziatedLayer()
+        layer.graph = graph
         graph_node = GraphNode()
         layer.add(graph_node)
         graph_node.add(current_read_node)
@@ -401,10 +420,18 @@ def create_read_node_chain(sequence: list[BaseLike]) -> ReadNode:
         current_read_node.next = next_read_node
         current_read_node = next_read_node
     return head
+    
 
 
 def add_trace_to_graph(sequence: list[BaseLike], trace: list[TracePoint]):
     read_node = create_read_node_chain(sequence)
+    return add_trace_read_node_to_graph(read_node=read_node, trace=trace)
+
+
+def add_trace_read_node_to_graph(read_node: ReadNode, trace: list[TracePoint]):
+    already_new_start_node_added = False
+
+    graph = trace[0].graph_node.layer.graph
 
     for trace_node in trace:
         if trace_node.operation == DpOperation.MATCH:
@@ -426,11 +453,18 @@ def add_trace_to_graph(sequence: list[BaseLike], trace: list[TracePoint]):
         elif trace_node.operation in [DpOperation.DELETE, DpOperation.DELETE_START]:
             # create new layer before existing one
             new_layer = AssoziatedLayer()
+            new_layer.graph = graph
             new_graph_node = GraphNode()
             new_layer.add(new_graph_node)
             new_graph_node.add(read_node)
             # should be automatically connected to the other layers via the read-linked-list
             read_node = read_node.next
+
+            # if we have multiple delete_starts in a row, only add the first one
+            if not already_new_start_node_added:
+                new_layer.graph.start_nodes.append(new_graph_node)
+                already_new_start_node_added = True
+
 
         elif trace_node.operation == DpOperation.INSERT_ALL_END:
             pass
@@ -438,6 +472,7 @@ def add_trace_to_graph(sequence: list[BaseLike], trace: list[TracePoint]):
         elif trace_node.operation == DpOperation.DELETE_ALL_END:
             for base in trace_node.end_cut_out_sequence:
                 new_layer = AssoziatedLayer()
+                new_layer.graph = graph
                 new_graph_node = GraphNode()
                 new_layer.add(new_graph_node)
                 new_graph_node.add(read_node)
@@ -449,11 +484,41 @@ def add_trace_to_graph(sequence: list[BaseLike], trace: list[TracePoint]):
             raise ValueError(f"Unknown operation: {trace_node.operation}")
 
 
-def add_to_graph_start_node(sequence: list[BaseLike], start_graph_node: GraphNode):
-    _, trace = wiped_dp_memoized_function(start_graph_node, sequence, True, True)
-    # print([t.operation.name for t in trace])
-    add_trace_to_graph(sequence, trace)
+def dp_with_graph(sequence: list[BaseLike], graph: Graph, alignment_bonus: float) -> DpOption:
+    '''Deals with multiple start-points.
+    Chooses best start-point based on alignment_bonus.
+    
+    Important: Save partial results from the handling of one start-node for the other, to avoid massive recalculation.
+    '''
+    wiper()  # important to reset cache
+    options = []
+    for start_node in graph.start_nodes:
+        option = dp_memoized_function(start_node, sequence, True, True, alignment_bonus=alignment_bonus)
+        options.append(option)
+    return min(options, key=lambda x: x.matching_adjusted_cost(alignment_bonus))
 
+def add_to_graph(sequence: list[BaseLike], graph: Graph, alignment_bonus: float)->DpOption:
+    option = dp_with_graph(sequence, graph, alignment_bonus=alignment_bonus)
+    add_trace_to_graph(sequence, option.trace)
+    return option
+
+
+
+def sequence_of_read(read: Read, probabilistic=False) -> list[BaseLike]:
+    return make_regular(*read.predicted_text) if not probabilistic else make_uncertain_regular(*read.uncertain_text)
+
+
+def create_linked_read_node(read: Read, probabilistic:bool=True) -> ReadNode:
+    sequence = sequence_of_read(read, probabilistic=probabilistic)
+    read_node = create_read_node_chain(sequence)
+    read.read_node_pointer = read_node
+    return read_node
+
+def add_read_to_graph(read: Read, graph: Graph,*, alignment_bonus: float, probabilistic: bool = True)-> DpOption:
+    sequence = sequence_of_read(read, probabilistic=probabilistic)
+    option = dp_with_graph(sequence, graph, alignment_bonus=alignment_bonus)
+    add_trace_read_node_to_graph(create_linked_read_node(read), option.trace)
+    return option
 
 def consent_of_graph(graph: Graph) -> list[BaseLike]:
     """Returns the most likely sequence from the graph"""
@@ -485,14 +550,21 @@ def consent_of_graph(graph: Graph) -> list[BaseLike]:
     return sequence
 
 
-def multiple_sequence_alignment(sequences: list[list[BaseLike]]) -> Graph:
+def multiple_sequence_alignment(sequences: list[list[BaseLike]], alignment_bonus:float) -> Graph:
     graph = initial_graph_of(sequences[0])
     for sequence in sequences[1:]:
-        add_to_graph_start_node(sequence, graph.start_nodes[0])
+        add_to_graph(sequence, graph, alignment_bonus=alignment_bonus)
     return graph
 
 
-def read_consent(reads: list[Read], as_read=False, probabilistic=False):
+def read_multiple_sequence_alignment(reads: list[Read], alignment_bonus:float, probabilistic=False):
+    graph = initial_graph_of_read_node(create_linked_read_node(reads[0], probabilistic=probabilistic))
+    for read in reads[1:]:
+        add_read_to_graph(read, graph, alignment_bonus=alignment_bonus, probabilistic=probabilistic)
+    return graph
+
+
+def read_consent(reads: list[Read],*, alignment_bonus:float, as_read=False, probabilistic=False):
     #print("reads: ", reads)
     if probabilistic:
         base_like_reads = list(
@@ -513,11 +585,9 @@ def read_consent(reads: list[Read], as_read=False, probabilistic=False):
             )
         )
 
-    #print("breads: ", base_like_reads)
-    graph = multiple_sequence_alignment(base_like_reads)
+    graph = multiple_sequence_alignment(base_like_reads, alignment_bonus=alignment_bonus)
 
     consent = consent_of_graph(graph)
-    #print("consent: ", consent)
     consent = [c.base for c in consent]
     if not as_read:
         return consent
@@ -543,41 +613,36 @@ def read_consent(reads: list[Read], as_read=False, probabilistic=False):
     return result
 
 
-def correct_reads_with_consens(reads: list[Read], probabilistic=False):
-    results = []
-    for i in range(len(reads)):
-        ordered_reads = ([reads[i]] + reads[:i] + reads[i + 1 :]).copy()
-        results.append(
-            read_consent(ordered_reads, as_read=True, probabilistic=probabilistic)
-        )
-        # print(results)
-    return results
+def correct_reads_with_consens(reads: list[Read],*, alignment_bonus:float, probabilistic=False):
+
+    pass
 
 
-def edit_distance(s1:list[BaseLike], s2:list[BaseLike]):
+
+    ### Old naive version
+
+    #results = []
+    #for i in range(len(reads)):
+    #    ordered_reads = ([reads[i]] + reads[:i] + reads[i + 1 :]).copy()
+    #    results.append(
+    #        read_consent(ordered_reads, as_read=True, probabilistic=probabilistic, alignment_bonus=alignment_bonus)
+    #    )
+    #    # print(results)
+    #return results
+
+
+def edit_distance(s1:list[BaseLike], s2:list[BaseLike], alignment_bonus):
     start_graph_node = initial_graph_of(s1).start_nodes[0]
-    cost, trace = wiped_dp_memoized_function(start_graph_node, s2, True, True)
-    return cost
+    option = wiped_dp_memoized_function(start_graph_node, s2, True, True, alignment_bonus=alignment_bonus)
+    return option.cost
 
 
-def tes_dp_same():
-    g = multiple_sequence_alignment([
-            make_regular(C, T, G, G, A, C),
-            make_regular(G, G, A, C, C, T),
-    ]
-        )
-    print(g)
-    assert consent_of_graph(
-        g
-    ) == make_regular(C, T, G, G, A, C, C, T)
-
-
-def dna_distance_error_rate(dna:str, reads: list[Read]):
+def dna_distance_error_rate(dna:str, reads: list[Read], alignment_bonus:float):
     individual_error_rates = []
     total_distance = 0
     total_length = 0
     for read in reads:
-        cost = edit_distance(make_regular(*dna),make_regular(*read.predicted_text))
+        cost = edit_distance(make_regular(*dna),make_regular(*read.predicted_text), alignment_bonus=alignment_bonus)
         length = len(read.original_text)
         individual_error_rates.append(cost/length)
         total_distance += cost
@@ -589,12 +654,25 @@ def dna_distance_error_rate(dna:str, reads: list[Read]):
 def percent_similarity_func(value1, value2, *, percent=0.2):
     return value1/value2 <= 1+percent and value2/value1 <= 1+percent
 
-def check_dna_distance_error_rate_suitable(dna:str, reads: list[Read], similarity_criterium=percent_similarity_func):
+def check_dna_distance_error_rate_suitable(dna:str, reads: list[Read],alignment_bonus:float, similarity_criterium=percent_similarity_func):
     real_result = most_likely_restorer_error_rate(reads)
-    arbitrary_alignment_result = dna_distance_error_rate(dna, reads)
+    arbitrary_alignment_result = dna_distance_error_rate(dna, reads, alignment_bonus=alignment_bonus)
     if not similarity_criterium(real_result, arbitrary_alignment_result):
         raise ValueError("Assumption broken: Allowing reads to align arbitrarely significantly reduces perceived error rate. In this case,"+
                          f"arbitrary alignment ({arbitrary_alignment_result}) and actual read origin alignment scores ({real_result}) cannot be used interchangeably.")
+
+
+def tes_dp_same():
+    start_graph_node = initial_graph_of(make_regular(C, G)).start_nodes[0]
+    sequence = make_regular(C, G)
+    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=0.7)
+    cost, trace = option.cost, option.trace
+    assert cost == 0
+    assert len(trace) == 2
+    assert trace[0].operation == DpOperation.MATCH
+    assert trace[0].graph_node.base == RegularBase(C)
+    assert trace[1].operation == DpOperation.MATCH
+    assert trace[1].graph_node.base == RegularBase(G)
 
 if __name__ == "__main__":
     tes_dp_same()
