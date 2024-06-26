@@ -26,21 +26,21 @@ def test_best_alignment_similarity(read1, read2, expected):
 
 
 def test_best_ensemble_alignment():
-    read = Read("AATCGA", 3, 9, certain_uncertainty_generator)
+    read = Read("AATCGA", 3)
     reference_reads = [
-        (Read("TCGAGG", 5, 11, certain_uncertainty_generator), 5),
-        (Read("CCCAAT", 0, 6, certain_uncertainty_generator), 0),
+        (Read("TCGAGG", 5), 5),
+        (Read("CCCAAT", 0), 0),
     ]
     assert best_ensemble_alignment(reference_reads, read)[0] == 3
 
 
 def test_most_likely_pot_string():
     get_in_pot_alignment = {
-        Read("AATCGA", 3, 9, certain_uncertainty_generator): 3,
-        Read("TCGAGG", 5, 11, certain_uncertainty_generator): 5,
+        Read("AATCGA", 3): 3,
+        Read("TCGAGG", 5): 5,
     }
     assert most_likely_pot_string(get_in_pot_alignment) == ("AATCGAGG", 3)
 
 
 def test_uncertain_text():
-        Read("AATCGA", 3, 9, certain_uncertainty_generator).predicted_text == "AATCGA"
+    Read("AATCGA", 3).predicted_text == "AATCGA"

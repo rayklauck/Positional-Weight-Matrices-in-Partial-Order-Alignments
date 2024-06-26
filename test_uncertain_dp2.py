@@ -2,6 +2,7 @@ from uncertain_dp2 import *
 
 TEST_ALINGMENT_BONUS = 0.7
 
+
 def test_create_read_node_chain():
     read_node_chain = create_read_node_chain(make_regular(C, G, T))
     assert read_node_chain.base == RegularBase(C)
@@ -42,7 +43,9 @@ def test_graph_initialization_layer():
 def test_dp_same_one_base():
     start_graph_node = initial_graph_of(make_regular(A)).start_nodes[0]
     sequence = make_regular(A)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 0
     assert len(trace) == 1
@@ -53,7 +56,9 @@ def test_dp_same_one_base():
 def test_dp_same_two_bases():
     start_graph_node = initial_graph_of(make_regular(C, G)).start_nodes[0]
     sequence = make_regular(C, G)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 0
     assert len(trace) == 2
@@ -66,7 +71,9 @@ def test_dp_same_two_bases():
 def test_dp_same_multiple_bases():
     start_graph_node = initial_graph_of(make_regular(C, G, A, T)).start_nodes[0]
     sequence = make_regular(C, G, A, T)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 0
     assert len(trace) == 4
@@ -83,7 +90,9 @@ def test_dp_same_multiple_bases():
 def test_dp_one_replacement():
     start_graph_node = initial_graph_of(make_regular(C, G, A)).start_nodes[0]
     sequence = make_regular(C, T, A)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == RegularBase(T).dp_conversion_penalty(RegularBase(G))
     assert len(trace) == 3
@@ -98,7 +107,9 @@ def test_dp_one_replacement():
 def test_dp_end():
     start_graph_node = initial_graph_of(make_regular(A)).start_nodes[0]
     sequence = []
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 0
     assert len(trace) == 1
@@ -109,7 +120,9 @@ def test_dp_end():
 def test_dp_one_insertion_scenario():
     start_graph_node = initial_graph_of(make_regular(G, T, A, C)).start_nodes[0]
     sequence = make_regular(G, A, C)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == INSERTION_PENALTY
     assert len(trace) == 4
@@ -126,7 +139,9 @@ def test_dp_one_insertion_scenario():
 def test_dp_one_deletion_scenario():
     start_graph_node = initial_graph_of(make_regular(G, A, C)).start_nodes[0]
     sequence = make_regular(G, T, A, C)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == DELETION_PENALTY
     assert len(trace) == 4
@@ -145,7 +160,9 @@ def test_dp_mixed_scenario():
         make_regular(G, A, C, T, T, G, C, C, C)
     ).start_nodes[0]
     sequence = make_regular(G, A, T, T, G, A, C, C, C)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     # assert [t.operation.name for t in trace] == False
     cost, trace = option.cost, option.trace
     assert cost == INSERTION_PENALTY + DELETION_PENALTY
@@ -177,7 +194,9 @@ def test_dp_mixed_scenario2():
         make_regular(G, A, C, T, T, G, C, T, A, A)
     ).start_nodes[0]
     sequence = make_regular(G, A, G, T, T, G, T, A, A)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert (
         cost == RegularBase(C).dp_conversion_penalty(RegularBase(G)) + INSERTION_PENALTY
@@ -208,7 +227,9 @@ def test_dp_mixed_scenario2():
 def test_add_to_graph_single_match():
     start_graph_node = initial_graph_of(make_regular(A)).start_nodes[0]
     sequence = make_regular(A)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     add_trace_to_graph(sequence, trace)
     assert len(start_graph_node.read_nodes) == 2
@@ -217,7 +238,9 @@ def test_add_to_graph_single_match():
 def test_add_to_graph_multiple_match():
     start_graph_node = initial_graph_of(make_regular(A, T, G)).start_nodes[0]
     sequence = make_regular(A, T, G)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     add_trace_to_graph(sequence, trace)
     assert len(start_graph_node.read_nodes) == 2
@@ -230,7 +253,9 @@ def test_add_to_graph_multiple_match():
 def test_add_to_graph_replace():
     start_graph_node = initial_graph_of(make_regular(C, C, A, T, G)).start_nodes[0]
     sequence = make_regular(C, C, G, T, G)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     add_trace_to_graph(sequence, trace)
 
@@ -245,7 +270,9 @@ def test_add_to_graph_replace():
 def test_add_to_graph_replace2():
     start_graph_node = initial_graph_of(make_regular(A, T, G)).start_nodes[0]
     sequence = make_regular(A, C, G)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     add_trace_to_graph(sequence, trace)
     assert len(start_graph_node.successors) == 2
@@ -328,7 +355,9 @@ def test_arbitrary_alignment_to_graph():
     add_to_graph(sequence, graph, alignment_bonus=TEST_ALINGMENT_BONUS)
     sequence = make_regular(A, C, G)
     start_graph_node = graph.start_nodes[0]
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 0
 
@@ -340,12 +369,16 @@ def test_arbitrary_alignment_to_graph2():
     start_graph_node = graph.start_nodes[0]
 
     sequence = make_regular(C, A, C, G)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 1
 
     sequence = make_regular(C, A, T, G, G)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 1
 
@@ -357,15 +390,15 @@ def test_arbitrary_alignment_to_graph_not_branch_jumping():
     start_graph_node = graph.start_nodes[0]
 
     sequence = make_regular(C, A, T, C, C, G)
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 1  # would be 0 if it could jump branches
 
 
 def test_arbitrary_alignment_to_graph_take_multiple_branches():
-    graph = initial_graph_of(
-        make_regular(A, T, C, G, A, T, C, G, A, T, C, G)
-    )
+    graph = initial_graph_of(make_regular(A, T, C, G, A, T, C, G, A, T, C, G))
     sequence = make_regular(A, T, C, T, A, T, C, G, A, T, C, G)
     add_to_graph(sequence, graph, alignment_bonus=TEST_ALINGMENT_BONUS)
     sequence = make_regular(A, T, C, G, A, T, C, C, A, T, C, G)
@@ -387,7 +420,9 @@ def test_uncertain_base_scalar_product():
 def test_align_positional_weight_matrix_reads_single_identical():
     start_graph_node = initial_graph_of(make_uncertain_regular(just(A))).start_nodes[0]
     sequence = make_uncertain_regular(just(A))
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 0
     assert len(trace) == 1
@@ -399,7 +434,9 @@ def test_align_positional_weight_matrix_reads_single_non_identical():
         make_uncertain_regular([0, 0, 0, 1])
     ).start_nodes[0]
     sequence = make_uncertain_regular([0, 0.1, 0.1, 0.8])
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert round(cost, 8) == 0.2
     assert len(trace) == 1
@@ -411,7 +448,9 @@ def test_align_positional_weight_matrix_reads_identical_sequence():
         make_uncertain_regular(*just_those(A, T, C))
     ).start_nodes[0]
     sequence = make_uncertain_regular(*just_those(A, T, C))
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 0
 
@@ -421,7 +460,9 @@ def test_align_positional_weight_matrix_reads_non_identical_sequence1():
         make_uncertain_regular(*just_those(A, T, C, T, T))
     ).start_nodes[0]
     sequence = make_uncertain_regular(*just_those(A, T, G, T, T))
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 1
 
@@ -431,7 +472,9 @@ def test_align_positional_weight_matrix_reads_non_identical_sequence2():
         make_uncertain_regular(*probably_those(A, T, p=0.7))
     ).start_nodes[0]
     sequence = make_uncertain_regular(*probably_those(A, T, p=0.7))
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert len(trace) == 2
     assert trace[0].operation == DpOperation.MATCH
@@ -446,7 +489,9 @@ def test_align_positional_weight_matrix_reads_non_identical_sequence3():
         make_uncertain_regular(*just_those(A, T, C, T, T))
     ).start_nodes[0]
     sequence = make_uncertain_regular(*just_those(A, T, G, T, T))
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 1
 
@@ -456,7 +501,9 @@ def test_align_positional_weight_matrix_reads_non_identical_sequence4():
         make_uncertain_regular(mix(A, C, C, C), mix(A, T), just(A))
     ).start_nodes[0]
     sequence = make_uncertain_regular(mix(A, C, C, C), mix(A, G), just(A))
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
 
     # assert [t.operation.name for t in trace] == False
@@ -476,7 +523,9 @@ def test_align_positional_weight_matrix_reads_detached():
     sequence = make_uncertain_regular(
         mix(A, A, A, A, G), mix(A, T, T, T), mix(G, G, G, T)
     )
-    option = wiped_dp_memoized_function(start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = wiped_dp_memoized_function(
+        start_graph_node, sequence, True, True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
 
     # assert [t.operation.name for t in trace] == False
@@ -566,8 +615,8 @@ def test_consent_of_graph():
             make_regular(A, G, C),
             make_regular(A, G, C),
             make_regular(A, T, C),
-        ]
-        , alignment_bonus=TEST_ALINGMENT_BONUS
+        ],
+        alignment_bonus=TEST_ALINGMENT_BONUS,
     )
     assert consent_of_graph(graph) == make_regular(A, G, C)
 
@@ -582,7 +631,8 @@ def test_consent_positional_weight_matrix():
                 make_uncertain_regular(
                     just(A), just(A), just(A), just(T), just(A), just(A), just(A)
                 ),
-            ], alignment_bonus=TEST_ALINGMENT_BONUS
+            ],
+            alignment_bonus=TEST_ALINGMENT_BONUS,
         )
     ) == make_uncertain_regular(
         just(A), just(A), just(A), mix(T, G), just(A), just(A), just(A)
@@ -616,7 +666,8 @@ def test_consent_positional_weight_matrix_delete():
                 make_uncertain_regular(
                     just(A), just(A), just(A), just(A), just(C), just(A), just(A)
                 ),
-            ], alignment_bonus=TEST_ALINGMENT_BONUS
+            ],
+            alignment_bonus=TEST_ALINGMENT_BONUS,
         )
     ) == make_uncertain_regular(
         just(A),
@@ -638,7 +689,8 @@ def test_consent_positional_weight_matrix_insert():
                     make_uncertain_regular(*just_those(A, T, A, C)),
                     make_uncertain_regular(*just_those(A, T, A, C)),
                     make_uncertain_regular(*just_those(A, T, G, A, C)),
-                ], alignment_bonus=TEST_ALINGMENT_BONUS
+                ],
+                alignment_bonus=TEST_ALINGMENT_BONUS,
             )
         )
         == make_uncertain_regular(*just_those(A, T, A, C))
@@ -655,7 +707,8 @@ def test_consent_positional_weight_matrix_multiple_insert():
                     make_uncertain_regular(*just_those(A, T, A, C)),
                     make_uncertain_regular(*just_those(A, T, A, C)),
                     make_uncertain_regular(*just_those(A, T, G, T, A, C)),
-                ], alignment_bonus=TEST_ALINGMENT_BONUS
+                ],
+                alignment_bonus=TEST_ALINGMENT_BONUS,
             )
         )
         == make_uncertain_regular(*just_those(A, T, A, C))
@@ -671,7 +724,8 @@ def test_consent_positional_weight_matrix_complex():
                 make_uncertain_regular(*just_those(A, T, A, C, C)),
                 make_uncertain_regular(*just_those(A, C, G, C, C)),
                 make_uncertain_regular(*just_those(A, C, A, C, C)),
-            ], alignment_bonus=TEST_ALINGMENT_BONUS
+            ],
+            alignment_bonus=TEST_ALINGMENT_BONUS,
         )
     ) == make_uncertain_regular(
         just(A), mix(T, T, C, C, C), mix(G, A, A, A, A), just(C), just(C)
@@ -690,7 +744,8 @@ def test_consent_insert_all_end():
             [
                 make_uncertain_regular(*just_those(A, C, A, G)),
                 make_uncertain_regular(*just_those(A, C, A, G, C)),
-            ], alignment_bonus=TEST_ALINGMENT_BONUS
+            ],
+            alignment_bonus=TEST_ALINGMENT_BONUS,
         )
     ) == make_uncertain_regular(*just_those(A, C, A, G, C))
 
@@ -701,47 +756,58 @@ def test_consent_delete_all_end():
             [
                 make_uncertain_regular(*just_those(A, C, A, G, C)),
                 make_uncertain_regular(*just_those(A, C, A, G)),
-            ], alignment_bonus=TEST_ALINGMENT_BONUS
+            ],
+            alignment_bonus=TEST_ALINGMENT_BONUS,
         )
     ) == make_uncertain_regular(*just_those(A, C, A, G, C))
 
 
 def test_consent_of_graph1():
-    g = multiple_sequence_alignment([
+    g = multiple_sequence_alignment(
+        [
             make_regular(C, T, G, G, A, C),
             make_regular(G, G, A, C, C, T),
-    ], alignment_bonus=TEST_ALINGMENT_BONUS
-        )
+        ],
+        alignment_bonus=TEST_ALINGMENT_BONUS,
+    )
     print(g)
-    assert consent_of_graph(
-        g
-    ) == make_regular(C, T, G, G, A, C, C, T)
+    assert consent_of_graph(g) == make_regular(C, T, G, G, A, C, C, T)
 
 
 def test_read_consent():
-   dna = "AACTGGACCTACGGAT"
-   read_length = 6
-   reads = [
-       generate_read(dna, read_length, start=2),
-       generate_read(dna, read_length, start=4),
-   ]
-   consent = read_consent(reads, alignment_bonus=TEST_ALINGMENT_BONUS)
-   assert consent == [C, T, G, G, A, C, C, T]
+    dna = "AACTGGACCTACGGAT"
+    read_length = 6
+    reads = [
+        generate_read(dna, read_length, start=2),
+        generate_read(dna, read_length, start=4),
+    ]
+    consent = read_consent(reads, alignment_bonus=TEST_ALINGMENT_BONUS)
+    assert consent == [C, T, G, G, A, C, C, T]
 
 
 def test_read_consent_return_read():
-   dna = "AACTGGACCTACGGAT"
-   read_length = 6
-   reads = [
-       generate_read(dna, read_length, start=2),
-       generate_read(dna, read_length, start=4),
-   ]
-   consent: Read = read_consent(reads, as_read=True, alignment_bonus=TEST_ALINGMENT_BONUS)
-   #assert consent. == [C, T, G, G, A, C, C, T]
+    dna = "AACTGGACCTACGGAT"
+    read_length = 6
+    reads = [
+        generate_read(dna, read_length, start=2),
+        generate_read(dna, read_length, start=4),
+    ]
+    consent: Read = read_consent(
+        reads, as_read=True, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
+    # assert consent. == [C, T, G, G, A, C, C, T]
 
 
 def test_edit_distance():
-    assert edit_distance(make_regular(A, A, A, C, A, A, A), make_regular(A, A, A, T, A, A, A), alignment_bonus=TEST_ALINGMENT_BONUS) == RegularBase.dp_conversion_penalty(RegularBase(C), RegularBase(T))
+    assert (
+        edit_distance(
+            make_regular(A, A, A, C, A, A, A),
+            make_regular(A, A, A, T, A, A, A),
+            alignment_bonus=TEST_ALINGMENT_BONUS,
+        )
+        == RegularBase.dp_conversion_penalty(RegularBase(C), RegularBase(T))
+    )
+
 
 """
 def test_alignment1():
@@ -755,7 +821,7 @@ def test_alignment1():
 
 def test_dp_same_one_base_graph():
     graph = initial_graph_of(make_regular(A))
-    option = dp_with_graph(make_regular(A),graph, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = dp_with_graph(make_regular(A), graph, alignment_bonus=TEST_ALINGMENT_BONUS)
     cost, trace = option.cost, option.trace
     assert cost == 0
     assert len(trace) == 1
@@ -765,7 +831,9 @@ def test_dp_same_one_base_graph():
 
 def test_dp_same_two_bases_graph():
     graph = initial_graph_of(make_regular(C, G))
-    option = dp_with_graph(make_regular(C, G), graph, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = dp_with_graph(
+        make_regular(C, G), graph, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 0
     assert len(trace) == 2
@@ -777,7 +845,9 @@ def test_dp_same_two_bases_graph():
 
 def test_dp_same_multiple_bases_graph():
     graph = initial_graph_of(make_regular(C, G, A, T))
-    option = dp_with_graph(make_regular(C, G, A, T), graph, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = dp_with_graph(
+        make_regular(C, G, A, T), graph, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     assert cost == 0
     assert len(trace) == 4
@@ -793,24 +863,27 @@ def test_dp_same_multiple_bases_graph():
 
 def test_new_start_added_correctly():
     graph = initial_graph_of(make_regular(A, T, C, G))
-    sequence =            make_regular(C, A, T, C, G)
+    sequence = make_regular(C, A, T, C, G)
     add_to_graph(sequence, graph, alignment_bonus=TEST_ALINGMENT_BONUS)
     assert len(graph.start_nodes) == 2
     assert graph.start_nodes[1].base == RegularBase(C)
     assert graph.start_nodes[1].successors[0] == graph.start_nodes[0]
 
+
 def test_new_start_added_correctly2():
     graph = initial_graph_of(make_regular(A, T, C, G, T, T, C))
-    sequence =            make_regular(C, A, T, C, A, T, T, C)
+    sequence = make_regular(C, A, T, C, A, T, T, C)
     add_to_graph(sequence, graph, alignment_bonus=TEST_ALINGMENT_BONUS)
     assert len(graph.start_nodes) == 2
 
 
 def test_all_starts_considered():
     graph = initial_graph_of(make_regular(A, T, C, G, T, T, C))
-    sequence =            make_regular(T, A, T, T, T, T)
+    sequence = make_regular(T, A, T, T, T, T)
     add_to_graph(sequence, graph, alignment_bonus=TEST_ALINGMENT_BONUS)
-    option = dp_with_graph(make_regular(T, A, T, T, T, T), graph, alignment_bonus=TEST_ALINGMENT_BONUS)
+    option = dp_with_graph(
+        make_regular(T, A, T, T, T, T), graph, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     cost, trace = option.cost, option.trace
     print(graph.start_nodes)
     print([t.operation.name for t in trace])
@@ -818,23 +891,203 @@ def test_all_starts_considered():
     assert sum([t.operation == DpOperation.MATCH for t in trace]) == 6
 
 
-# def test_not_all_starts_considered():
-#     graph = initial_graph_of(make_regular(A, T, C, G, T, T, C))
-#     sequence =            make_regular(T, A, T, T ,T ,T)
-#     add_to_graph(sequence, graph, alignment_bonus=TEST_ALINGMENT_BONUS)
-#     option = dp_with_graph(make_regular(T, A, T, T, T, T), graph, alignment_bonus=TEST_ALINGMENT_BONUS)
-#     cost, trace = option.cost, option.trace
-#     #print([t.operation.name for t in trace])
-#     #assert cost != 0
-#     assert sum([t.operation == DpOperation.MATCH for t in trace]) < 6
+def test_consent_at_read():
+    reads = [
+        Read("ATCGTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator),
+    ]
+    graph = read_multiple_sequence_alignment(
+        reads,
+        alignment_bonus=TEST_ALINGMENT_BONUS,
+        probabilistic=False,
+    )
 
+    assert consent_at_read(reads[0]) == make_regular(A, T, C, A, T, T, C)
+
+
+def test_consent_at_read_probabilistic():
+    reads = [
+        Read("ATCGTTC", 0, uncertain_text=just_those(A, T, C, G, T, T, C)),
+        Read("ATCATTC", 0, uncertain_text=just_those(A, T, C, A, T, T, C)),
+        Read("ATCATTC", 0, uncertain_text=just_those(A, T, C, A, T, T, C)),
+    ]
+    graph = read_multiple_sequence_alignment(
+        reads,
+        alignment_bonus=TEST_ALINGMENT_BONUS,
+        probabilistic=True,
+    )
+    print(consent_at_read(reads[0]))
+
+    assert consent_at_read(reads[0]) == make_uncertain_regular(
+        *[*just_those(A, T, C), mix(G, A, A), *just_those(T, T, C)]
+    )
+
+
+def test_consent_at_read_insert():
+    reads = [
+        Read("ATCGTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+    ]
+    graph = read_multiple_sequence_alignment(
+        reads,
+        alignment_bonus=TEST_ALINGMENT_BONUS,
+        probabilistic=False,
+    )
+    assert consent_at_read(reads[0]) == make_regular(A, T, C, T, T, C)
+
+
+
+def test_consent_at_read_delete():
+    
+    reads = [
+        Read("ATCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+    ]
+    graph = read_multiple_sequence_alignment(
+        reads,
+        alignment_bonus=TEST_ALINGMENT_BONUS,
+        probabilistic=False,
+    )
+    assert consent_at_read(reads[0]) == make_regular(A, T, C, C, T, T, C)
+
+
+def test_consent_at_read_delete_end():
+    """Semantically: Read only needs to be corrected within its scope.
+      So inserts in the front and deletes in the back will be disregarded"""
+    reads = [
+        Read("ATCCTT", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+    ]
+    graph = read_multiple_sequence_alignment(
+        reads,
+        alignment_bonus=TEST_ALINGMENT_BONUS,
+        probabilistic=False,
+    )
+    assert consent_at_read(reads[0]) == make_regular(A, T, C, C, T, T)
+
+
+
+def test_consent_at_read_insert_end():
+    """Inserts at the end cannot be corrected, because this might be the only read going further..."""
+    reads = [
+        Read("ATCCTTCAGT", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCCTT", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCCTT", 0, uncertainty_generator=certain_uncertainty_generator),
+    ]
+    graph = read_multiple_sequence_alignment(
+        reads,
+        alignment_bonus=TEST_ALINGMENT_BONUS,
+        probabilistic=False,
+    )
+    print(consent_at_read(reads[0]))
+    assert consent_at_read(reads[0]) == make_regular(A, T, C, C, T, T,C,A,G,T)
+
+
+
+def test_consent_at_read_delete_start():
+    """Semantically: Read only needs to be corrected within its scope.
+      So inserts in the front and deletes in the back will be disregarded"""
+    reads = [
+        Read("TCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+    ]
+    graph = read_multiple_sequence_alignment(
+        reads,
+        alignment_bonus=TEST_ALINGMENT_BONUS,
+        probabilistic=False,
+    )
+    assert consent_at_read(reads[0]) == make_regular(T, C, C, T, T, C)
+
+
+def test_consent_at_read_insert_start():
+    """Additional bases at the start cannot be corrected, because this might be the only read beginning that early..."""
+
+    reads = [
+        Read("ATCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("TCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("TCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+    ]
+    graph = read_multiple_sequence_alignment(
+        reads,
+        alignment_bonus=TEST_ALINGMENT_BONUS,
+        probabilistic=False,
+    )
+    assert consent_at_read(reads[0]) == make_regular(A, T, C, C, T, T, C)
+
+
+def test_consent_corrected_read():
+    reads = [
+        Read("ATCGTTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator),
+    ]
+    graph = read_multiple_sequence_alignment(
+        reads,
+        alignment_bonus=TEST_ALINGMENT_BONUS,
+        probabilistic=False,
+    )
+    assert consent_corrected_read(reads[0], probabilistic=False).uncertain_text == \
+        list(map(certain_uncertainty_generator,"ATCATTC"))
+
+
+def test_consent_corrected_read_probabilistic():
+    reads = [
+        Read("ATCGTTC", 0, uncertain_text=just_those(A, T, C, G, T, T, C)),
+        Read("ATCATTC", 0, uncertain_text=just_those(A, T, C, A, T, T, C)),
+        Read("ATCATTC", 0, uncertain_text=just_those(A, T, C, A, T, T, C)),
+    ]
+    graph = read_multiple_sequence_alignment(
+        reads,
+        alignment_bonus=TEST_ALINGMENT_BONUS,
+        probabilistic=True,
+    )
+    assert consent_corrected_read(reads[0], probabilistic=True).uncertain_text == \
+        [*just_those(A,T,C), mix(G,A,A), *just_those(T,T,C)]
+
+
+def test_sequence_of_read():
+    r = Read("ATCGTTC", 0, uncertainty_generator=certain_uncertainty_generator)
+    assert sequence_of_read(r, probabilistic=False) == make_regular(A, T, C, G, T, T, C)
+    assert sequence_of_read(r, probabilistic=True) == make_uncertain_regular(
+        *just_those(A, T, C, G, T, T, C)
+    )
+
+
+def test_correct_reads_with_consent():
+    reads = [
+        Read("ATCATTC", 0, uncertain_text=make_certain_uncertain("ATCGTTC")),
+        Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator),
+    ]
+
+    corrected_reads = correct_reads_with_consens(reads, probabilistic=False, alignment_bonus=TEST_ALINGMENT_BONUS)
+    for r in corrected_reads:
+        assert r.uncertain_text == make_certain_uncertain("ATCATTC")
+
+
+def test_correct_reads_with_consens():
+    reads = [
+        Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator,uncertain_text=make_certain_uncertain("ATCGTTC")),
+        Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator),
+        Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator),
+    ]
+    corrected_reads = correct_reads_with_consens(reads, probabilistic=False, alignment_bonus=TEST_ALINGMENT_BONUS)
+    assert [r.predicted_text for r in corrected_reads] == ["ATCATTC" for _ in range(3)]
+
+
+def test_create_read_without_measurement():
+    r = Read("ATC", 0, uncertainty_generator=certain_uncertainty_generator)
+    assert r.uncertain_text == make_certain_uncertain("ATC")
 
 
 # parametrized test for checking order of adding sequences does not influence result
 
+# machen, dass reads vor dem in probablistic graph tun auf genauigkeit gerundet werden
+# machen, dass consent aus graph auch auf grobkörnigkeit gerundet wird
 
-
-# todo: multiple starting points in general
-
-#todo
-# correct reads via linked read_nodes and graph consent
+# read consent testen bei inserts und delete
