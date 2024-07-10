@@ -3,6 +3,7 @@ from enum import Enum
 from functools import cache
 from pot_correction import *
 from abc import ABC, abstractmethod
+import random
 
 DELETION_PENALTY = 1
 INSERTION_PENALTY = 1
@@ -138,7 +139,14 @@ class PositionalWeightMatrixBase(BaseLike):
             for i, v in enumerate(b.base):
                 histogram[i] += v
 
-        return PositionalWeightMatrixBase(normalize(histogram))
+        # make the result discrete. Does the consent need to have the same granularity as the input?
+        # Here, we answer that with a yes, to ensure similar behaviour to regular base in case of granularity 1
+
+        return PositionalWeightMatrixBase(
+            #round_uncertainty_matrix(
+                normalize(histogram)#, 1
+           # )  # todo: hardcoded granularity
+        )
 
     def __repr__(self):
         # return "~" + most_likely_base_restorer(self.base)
@@ -543,9 +551,10 @@ def add_read_to_graph(
     return option
 
 
+'''
 def consent_of_graph(graph: Graph) -> list[BaseLike]:
     """Returns the most likely sequence from the graph"""
-    current_graph_node = graph.start_nodes[0]  # TODO: assumption only one start
+    current_graph_node = graph.start_nodes[0]  # TO-DO: assumption only one start
     sequence = []
 
     current_layer = current_graph_node.layer
@@ -571,6 +580,7 @@ def consent_of_graph(graph: Graph) -> list[BaseLike]:
         next_layer = majority_vote_none_only_if_no_other(next_layer_candidates)
         current_layer = next_layer
     return sequence
+'''
 
 
 def consent_at_read(read: Read) -> list[BaseLike]:
@@ -619,21 +629,22 @@ def consent_at_read_nodes(
             break
 
         current_layer = next_layer
-        if current_layer is  None:   #todo: why is this happening? Should never occur, but it does. Is the solution correct??
-            print(next_layer_candidates)
+        if (
+            current_layer is None
+        ):  # todo: why is this happening? Should never occur, but it does. Is the solution correct??
             break
-            #raise ValueError("No next layer found")
+            # raise ValueError("No next layer found")
 
     return sequence
 
 
-def consent_corrected_read(read: Read,*, probabilistic:bool) -> Read:
+def consent_corrected_read(read: Read, *, probabilistic: bool) -> Read:
     result = read.copy()
     consent = consent_at_read(result)
     result.uncertain_text = (
         [c.base for c in consent]
         if probabilistic
-        else list(map(certain_uncertainty_generator,[c.base for c in consent]))
+        else list(map(certain_uncertainty_generator, [c.base for c in consent]))
     )
     return result
 
@@ -660,10 +671,10 @@ def read_multiple_sequence_alignment(
     return graph
 
 
+"""
 def read_consent(
     reads: list[Read], *, alignment_bonus: float, as_read=False, probabilistic=False
 ):
-    # print("reads: ", reads)
     if probabilistic:
         base_like_reads = list(
             map(
@@ -692,7 +703,7 @@ def read_consent(
     if not as_read:
         return consent
     # raise NotImplementedError("Not implemented yet")
-    # TODO: may go outsidethe read dna if something was misaligned
+    # TO-DO: may go outsidethe read dna if something was misaligned
 
     start = reads[0].start_position
     end = start + len(consent)
@@ -707,8 +718,9 @@ def read_consent(
     else:
         result.uncertain_text = list(map(certain_uncertainty_generator, consent))[
             : len(reads[0].original_text)
-        ]  # TODO: always correct?
+        ]  # TO-DO: always correct?
     return result
+"""
 
 
 def correct_reads_with_consens(
@@ -718,31 +730,28 @@ def correct_reads_with_consens(
     graph = read_multiple_sequence_alignment(
         reads, alignment_bonus=alignment_bonus, probabilistic=probabilistic
     )
-    return [consent_corrected_read(r, probabilistic=probabilistic) for r in reads] #todo
-
-    ### Old naive version
-
-    # results = []
-    # for i in range(len(reads)):
-    #    ordered_reads = ([reads[i]] + reads[:i] + reads[i + 1 :]).copy()
-    #    results.append(
-    #        read_consent(ordered_reads, as_read=True, probabilistic=probabilistic, alignment_bonus=alignment_bonus)
-    #    )
-    #    # print(results)
-    # return results
+    return [consent_corrected_read(r, probabilistic=probabilistic) for r in reads]
 
 
-def edit_distance(s1: list[BaseLike], s2: list[BaseLike],*, alignment_bonus):
+def edit_distance(s1: list[BaseLike], s2: list[BaseLike], *, alignment_bonus):
     start_graph_node = initial_graph_of(s1).start_nodes[0]
     option = wiped_dp_memoized_function(
         start_graph_node, s2, True, True, alignment_bonus=alignment_bonus
     )
     return option.cost
 
-def read_edit_distance(read:Read,*, alignment_bonus:float):
-    return edit_distance(make_regular(*read.original_text), make_regular(*read.predicted_text), alignment_bonus=alignment_bonus)
 
-def colored_edit_string(s1: list[BaseLike], s2: list[BaseLike],*, alignment_bonus:float):
+def read_edit_distance(read: Read, *, alignment_bonus: float):
+    return edit_distance(
+        make_regular(*read.original_text),
+        make_regular(*read.predicted_text),
+        alignment_bonus=alignment_bonus,
+    )
+
+
+def colored_edit_string(
+    s1: list[BaseLike], s2: list[BaseLike], *, alignment_bonus: float
+):
     start_graph_node = initial_graph_of(s1).start_nodes[0]
     option = wiped_dp_memoized_function(
         start_graph_node, s2, True, True, alignment_bonus=alignment_bonus
@@ -752,37 +761,46 @@ def colored_edit_string(s1: list[BaseLike], s2: list[BaseLike],*, alignment_bonu
         if t.operation in [DpOperation.DELETE, DpOperation.DELETE_START]:
             edit_string += colored_string("X", RED)
         elif t.operation in [DpOperation.INSERT, DpOperation.INSERT_START]:
-            edit_string += colored_string("X",GREEN)
+            edit_string += colored_string("X", GREEN)
         elif t.operation == DpOperation.MATCH:
-            edit_string += colored_string("X",WHITE)
+            edit_string += colored_string("X", WHITE)
         elif t.operation == DpOperation.REPLACE:
-            edit_string += colored_string("X",BLUE)
+            edit_string += colored_string("X", BLUE)
         elif t.operation == DpOperation.INSERT_ALL_END:
-            edit_string += colored_string("...",GREEN)
+            edit_string += colored_string("...", GREEN)
         elif t.operation == DpOperation.DELETE_ALL_END:
-            edit_string += colored_string("...",RED)
+            edit_string += colored_string("...", RED)
         elif t.operation == DpOperation.DELETE_START:
-            edit_string += colored_string("X",GREEN)
+            edit_string += colored_string("X", GREEN)
         else:
-            raise("Unknown DpOperation")
+            raise ("Unknown DpOperation")
     return edit_string
 
 
-def print_it(f:t.Callable[[t.Any],str]):
-    def wrapper(*args,**kwargs):
-        print(f(*args,**kwargs))
+def print_it(f: t.Callable[[t.Any], str]):
+    def wrapper(*args, **kwargs):
+        print(f(*args, **kwargs))
+
     return wrapper
 
 
-def show_read_errors(read:Read,*, alignment_bonus:float):
-    return colored_edit_string(make_regular(*read.original_text), make_regular(*read.predicted_text), alignment_bonus=alignment_bonus)
+def show_read_errors(read: Read, *, alignment_bonus: float):
+    return colored_edit_string(
+        make_regular(*read.original_text),
+        make_regular(*read.predicted_text),
+        alignment_bonus=alignment_bonus,
+    )
 
 
-def show_read_intendet_errors(read:Read,*, alignment_bonus:float):
-    return " "*read.start_position + show_read_errors(read, alignment_bonus=alignment_bonus)
+def show_read_intendet_errors(read: Read, *, alignment_bonus: float):
+    return " " * read.start_position + show_read_errors(
+        read, alignment_bonus=alignment_bonus
+    )
+
 
 print_read_errors = print_it(show_read_errors)
 print_read_intendet_errors = print_it(show_read_intendet_errors)
+
 
 def dna_distance_error_rate(dna: str, reads: list[Read], alignment_bonus: float):
     individual_error_rates = []
@@ -798,7 +816,7 @@ def dna_distance_error_rate(dna: str, reads: list[Read], alignment_bonus: float)
         individual_error_rates.append(cost / length)
         total_distance += cost
         total_length += length
-    print(individual_error_rates)
+    # print(individual_error_rates)
     return total_distance / total_length
 
 
@@ -812,7 +830,9 @@ def check_dna_distance_error_rate_suitable(
     alignment_bonus: float,
     similarity_criterium=percent_similarity_func,
 ):
-    real_result = most_likely_restorer_error_rate(reads)
+    real_result = most_likely_restorer_error_rate(
+        reads, alignment_bonus=alignment_bonus
+    )
     arbitrary_alignment_result = dna_distance_error_rate(
         dna, reads, alignment_bonus=alignment_bonus
     )
@@ -823,29 +843,18 @@ def check_dna_distance_error_rate_suitable(
         )
 
 
-def most_likely_restorer_error_rate(reads: list[Read], *, alignment_bonus: float=2): # todo: hardcoded alignment bonus!!!
+def most_likely_restorer_error_rate(reads: list[Read], *, alignment_bonus: float):
     distances = [
-       read_edit_distance(r, alignment_bonus=alignment_bonus) / len(r.original_text) # this is not any more counting actual mistakes, but best available alignment... (problematic??)
-       for r in reads
+        read_edit_distance(r, alignment_bonus=alignment_bonus)
+        / len(
+            r.original_text
+        )  # this is not any more counting actual mistakes, but best available alignment... (problematic??)
+        for r in reads
     ]
-    print(distances)
+    # print(distances)
     return sum(distances) / len(distances)
 
 
-def tes_dp_same():
-    # graph = initial_graph_of(make_regular(A, T, C, G, T, T, C))
-    # add_to_graph(            make_regular(A, T, C, A, T, T, C), graph, alignment_bonus=TEST_ALINGMENT_BONUS)
-    # add_to_graph(            make_regular(A, T, C, A, T, T, C), graph, alignment_bonus=TEST_ALINGMENT_BONUS)
-    graph = read_multiple_sequence_alignment(
-        [
-            Read("ATCGTTC", 0, 7, uncertainty_generator=certain_uncertainty_generator),
-            Read("ATCATTC", 0, 7, uncertainty_generator=certain_uncertainty_generator),
-            Read("ATCATTC", 0, 7, uncertainty_generator=certain_uncertainty_generator),
-        ],
-        alignment_bonus=0.7,
-        probabilistic=False,
-    )
-
-
 if __name__ == "__main__":
-    tes_dp_same()
+    # tes_dp_same()
+    pass

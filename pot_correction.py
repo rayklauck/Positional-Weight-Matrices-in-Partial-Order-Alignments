@@ -142,7 +142,7 @@ class Read:
         """What the uncertain text suggests the bases are"""
         return most_likely_restorer(self.uncertain_text)
 
-    #def __repr__(self):
+    # def __repr__(self):
     #    return self.predicted_text
 
     def __hash__(self) -> int:
@@ -155,7 +155,7 @@ class Read:
             uncertainty_generator=self.uncertainty_generator,
             dna_pointer=self.dna_pointer,
             read_node_pointer=self.read_node_pointer,
-            uncertain_text=self.uncertain_text,
+            uncertain_text=self.uncertain_text.copy(),
         )
 
 
@@ -185,7 +185,7 @@ def percent_most_likely_uncertainty_generator(base, inprecision_rate=0.15):
                 return result
 
 
-def certain_uncertainty_generator(base:str)->UncertainBase:
+def certain_uncertainty_generator(base: str) -> UncertainBase:
     """Simulating perfect measurements"""
     index = base_to_index[base]
     result = [0, 0, 0, 0]
@@ -393,7 +393,6 @@ def most_likely_base_restorer(uncertain_base: UncertainBase):
     return alphabet[max(range(4), key=lambda i: uncertain_base[i])]
 
 
-
 def get_in_pot_alignment(pot: Pot) -> tuple[dict[Read, int], dict[Read, float]]:
     read_to_start_position = {}
 
@@ -461,7 +460,7 @@ def correct_reads_with_restored_text(
     restored_text: tuple[str, int],
     only_correct_if_change_maximal_percent=0.3,
 ):
-    """todo: only correct if the difference is not too high (avoid correcting those who do not belong to the pot)"""
+    """to-do: only correct if the difference is not too high (avoid correcting those who do not belong to the pot)"""
     restored_string, lowest_position = restored_text
     corrected_reads = []
     for read, start_position in in_pot_alignment.items():
@@ -499,7 +498,7 @@ def correct_reads_with_restored_text(
     return corrected_reads
 
 
-#def most_likely_restorer_error_rate(reads: list[Read]):
+# def most_likely_restorer_error_rate(reads: list[Read]):
 #    similarities = [
 #        string_similarity(most_likely_restorer(r.uncertain_text), r.original_text)
 #        for r in reads
@@ -621,3 +620,32 @@ def create_read_with_dna_pointer(
         dna_pointer=dna,
         uncertain_text=measurement,
     )
+
+
+def round_uncertainty_matrix(base: UncertainBase, M: int) -> UncertainBase:
+    block_size = 1 / M
+    discrete_modelling = [0, 0, 0, 0]
+    still_there = base.copy()
+    blocks_still_to_distribute = M
+    for i in range(4):
+        discrete_modelling[i] = base[i] - base[i] % block_size
+        blocks_still_to_distribute -= base[i] // block_size
+        still_there[i] = base[i] % block_size
+
+    while blocks_still_to_distribute > 0:
+        i = max(range(4), key=lambda i: still_there[i])
+        discrete_modelling[i] += block_size
+        still_there[i] -= block_size
+        blocks_still_to_distribute -= 1
+
+    # round floating point precision errors
+    discrete_modelling = [round(a, 10) for a in discrete_modelling]
+    return discrete_modelling
+
+
+def rounded_read(read: Read, M: int) -> Read:
+    result = read.copy()
+    result.uncertain_text = list(
+        map(lambda base: round_uncertainty_matrix(base, M), result.uncertain_text)
+    )
+    return result

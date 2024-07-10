@@ -44,3 +44,36 @@ def test_most_likely_pot_string():
 
 def test_uncertain_text():
     Read("AATCGA", 3).predicted_text == "AATCGA"
+
+
+def test_round_uncertainty_matrix_one_block():
+    assert round_uncertainty_matrix([0.1, 0.2, 0.3, 0.4], M=1) == [0, 0, 0, 1]
+
+
+def test_round_uncertainty_matrix_two_blocks():
+    assert round_uncertainty_matrix([0.1, 0.2, 0.3, 0.4], M=2) == [0, 0, 0.5, 0.5]
+
+
+def test_round_uncertainty_matrix_many_blocks_precise():
+    assert round_uncertainty_matrix([0.1, 0.2, 0.3, 0.4], M=10) == [0.1, 0.2, 0.3, 0.4]
+
+
+def test_round_uncertainty_matrix_many_blocks():
+    assert round_uncertainty_matrix([0.1, 0.2, 0.3, 0.4], M=5) == [0.2, 0.2, 0.2, 0.4]
+
+
+def test_round_uncertainty_base():
+    assert round_uncertainty_matrix(just(A), M=1) == just(A)
+
+
+def test_read_copy_independend():
+    read = Read("AATCGA", 3)
+    read_copy = read.copy()
+    read_copy.uncertain_text[0] = [[0, 0, 2, 1]]
+    assert read.uncertain_text == make_certain_uncertain("AATCGA")
+
+
+def test_rounded_read_does_not_change_read():
+    read = Read("AATCGA", 3)
+    rounded_r = rounded_read(read, 1)
+    assert read.uncertain_text == make_certain_uncertain("AATCGA")

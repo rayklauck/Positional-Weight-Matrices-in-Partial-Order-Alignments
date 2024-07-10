@@ -1,7 +1,8 @@
 from uncertain_dp2 import *
+from experimenting_kit import *
 
 TEST_ALINGMENT_BONUS = 0.7
-
+random.seed(1)
 
 def test_create_read_node_chain():
     read_node_chain = create_read_node_chain(make_regular(C, G, T))
@@ -609,6 +610,7 @@ def test_consent_positional_base_matrix():
     ) == PositionalWeightMatrixBase([0.55, 0.45, 0, 0])
 
 
+"""
 def test_consent_of_graph():
     graph = multiple_sequence_alignment(
         [
@@ -772,8 +774,10 @@ def test_consent_of_graph1():
     )
     print(g)
     assert consent_of_graph(g) == make_regular(C, T, G, G, A, C, C, T)
+"""
 
 
+"""
 def test_read_consent():
     dna = "AACTGGACCTACGGAT"
     read_length = 6
@@ -796,6 +800,7 @@ def test_read_consent_return_read():
         reads, as_read=True, alignment_bonus=TEST_ALINGMENT_BONUS
     )
     # assert consent. == [C, T, G, G, A, C, C, T]
+"""
 
 
 def test_edit_distance():
@@ -938,9 +943,8 @@ def test_consent_at_read_insert():
     assert consent_at_read(reads[0]) == make_regular(A, T, C, T, T, C)
 
 
-
 def test_consent_at_read_delete():
-    
+
     reads = [
         Read("ATCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
         Read("ATCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
@@ -956,7 +960,7 @@ def test_consent_at_read_delete():
 
 def test_consent_at_read_delete_end():
     """Semantically: Read only needs to be corrected within its scope.
-      So inserts in the front and deletes in the back will be disregarded"""
+    So inserts in the front and deletes in the back will be disregarded"""
     reads = [
         Read("ATCCTT", 0, uncertainty_generator=certain_uncertainty_generator),
         Read("ATCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
@@ -968,7 +972,6 @@ def test_consent_at_read_delete_end():
         probabilistic=False,
     )
     assert consent_at_read(reads[0]) == make_regular(A, T, C, C, T, T)
-
 
 
 def test_consent_at_read_insert_end():
@@ -984,13 +987,12 @@ def test_consent_at_read_insert_end():
         probabilistic=False,
     )
     print(consent_at_read(reads[0]))
-    assert consent_at_read(reads[0]) == make_regular(A, T, C, C, T, T,C,A,G,T)
-
+    assert consent_at_read(reads[0]) == make_regular(A, T, C, C, T, T, C, A, G, T)
 
 
 def test_consent_at_read_delete_start():
     """Semantically: Read only needs to be corrected within its scope.
-      So inserts in the front and deletes in the back will be disregarded"""
+    So inserts in the front and deletes in the back will be disregarded"""
     reads = [
         Read("TCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
         Read("ATCCTTC", 0, uncertainty_generator=certain_uncertainty_generator),
@@ -1031,8 +1033,9 @@ def test_consent_corrected_read():
         alignment_bonus=TEST_ALINGMENT_BONUS,
         probabilistic=False,
     )
-    assert consent_corrected_read(reads[0], probabilistic=False).uncertain_text == \
-        list(map(certain_uncertainty_generator,"ATCATTC"))
+    assert consent_corrected_read(reads[0], probabilistic=False).uncertain_text == list(
+        map(certain_uncertainty_generator, "ATCATTC")
+    )
 
 
 def test_consent_corrected_read_probabilistic():
@@ -1046,8 +1049,11 @@ def test_consent_corrected_read_probabilistic():
         alignment_bonus=TEST_ALINGMENT_BONUS,
         probabilistic=True,
     )
-    assert consent_corrected_read(reads[0], probabilistic=True).uncertain_text == \
-        [*just_those(A,T,C), mix(G,A,A), *just_those(T,T,C)]
+    assert consent_corrected_read(reads[0], probabilistic=True).uncertain_text == [
+        *just_those(A, T, C),
+        mix(G, A, A),
+        *just_those(T, T, C),
+    ]
 
 
 def test_sequence_of_read():
@@ -1065,18 +1071,27 @@ def test_correct_reads_with_consent():
         Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator),
     ]
 
-    corrected_reads = correct_reads_with_consens(reads, probabilistic=False, alignment_bonus=TEST_ALINGMENT_BONUS)
+    corrected_reads = correct_reads_with_consens(
+        reads, probabilistic=False, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     for r in corrected_reads:
         assert r.uncertain_text == make_certain_uncertain("ATCATTC")
 
 
 def test_correct_reads_with_consens():
     reads = [
-        Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator,uncertain_text=make_certain_uncertain("ATCGTTC")),
+        Read(
+            "ATCATTC",
+            0,
+            uncertainty_generator=certain_uncertainty_generator,
+            uncertain_text=make_certain_uncertain("ATCGTTC"),
+        ),
         Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator),
         Read("ATCATTC", 0, uncertainty_generator=certain_uncertainty_generator),
     ]
-    corrected_reads = correct_reads_with_consens(reads, probabilistic=False, alignment_bonus=TEST_ALINGMENT_BONUS)
+    corrected_reads = correct_reads_with_consens(
+        reads, probabilistic=False, alignment_bonus=TEST_ALINGMENT_BONUS
+    )
     assert [r.predicted_text for r in corrected_reads] == ["ATCATTC" for _ in range(3)]
 
 
@@ -1085,9 +1100,42 @@ def test_create_read_without_measurement():
     assert r.uncertain_text == make_certain_uncertain("ATC")
 
 
+def test_resolution1_equals_normal_correction():
+    environment = Environment(
+        read_count=3,
+        read_length=10,
+        dna_length=15,
+        normal_alignment_bonus=0.7,
+        probabilistic_alignment_bonus=2,
+        gauss_unsharpness=0.47,
+    )
+
+    same_used_alignment_bonus = environment.normal_alignment_bonus
+
+    data1, data2 = compare_and_plot(
+        [
+            lambda reads: correct_reads_with_consens(
+                reads,
+                probabilistic=False,
+                alignment_bonus=same_used_alignment_bonus,
+            ),
+            lambda reads: correct_reads_with_consens(
+                [rounded_read(r, 1) for r in reads],
+                alignment_bonus=same_used_alignment_bonus,
+                probabilistic=True,
+            ),
+        ],
+        iterations=50,
+        environment=environment,
+    )
+    #print(data1)
+    #print(data2)
+    print(len([1 for i in range(len(data1)) if data1[i] != data2[i]]))
+    assert data1 == data2
+
+
 # parametrized test for checking order of adding sequences does not influence result
 
-# machen, dass reads vor dem in probablistic graph tun auf genauigkeit gerundet werden
 # machen, dass consent aus graph auch auf grobkörnigkeit gerundet wird
 
 # read consent testen bei inserts und delete
