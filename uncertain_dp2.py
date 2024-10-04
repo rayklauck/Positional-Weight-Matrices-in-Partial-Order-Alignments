@@ -86,6 +86,18 @@ class Graph:
     start_nodes: list[GraphNode]
     reads: list[ReadNode] = field(default_factory=list)
 
+    def get_all_graph_nodes(self)->t.Set[GraphNode]:
+        visited_graph_nodes = set()
+        to_visit = self.start_nodes.copy()
+        while to_visit:
+            current = to_visit.pop()
+            if current in visited_graph_nodes:
+                continue
+            visited_graph_nodes.add(current)
+            to_visit.extend(current.successors)
+        return visited_graph_nodes
+        
+
 
 class RegularBase(BaseLike):
     def __init__(self, base: str):

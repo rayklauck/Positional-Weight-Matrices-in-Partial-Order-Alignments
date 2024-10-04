@@ -197,7 +197,7 @@ def make_certain_uncertain(text: str) -> list[UncertainBase]:
     return list(map(certain_uncertainty_generator, text))
 
 
-def unsharp_uncertainty_generator(base, inprecision_rate=0.15):
+def unsharp_uncertainty_generator(base, inprecision_rate=0.47):
     """caution: can generate negative values"""
     result = certain_uncertainty_generator(base)
     for i in range(len(result)):
@@ -213,11 +213,11 @@ def unsharp_uncertainty_generator(base, inprecision_rate=0.15):
     return result
 
 
-def gauss_unsharp_uncertainty_generator(base, inprecision_rate=0.15):
+def gauss_unsharp_uncertainty_generator(base, gauss_unsharpness_parameter=0.47):
     """caution: can generate negative values"""
-    result = certain_uncertainty_generator(base)
+    result = certain_uncertainty_generator(base) 
     for i in range(len(result)):
-        result[i] = clip(result[i] + gauss(0, inprecision_rate), 0, 1)
+        result[i] = clip(result[i] + gauss(0, gauss_unsharpness_parameter), 0, 1)
     # normalize
     sum_ = sum(result)
     if sum_ == 0:
